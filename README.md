@@ -51,3 +51,11 @@ With the development server running, `npm run test:browser` checks WebGL, mouse 
 - `src/motion.js`: double-jump animation
 - `src/physics.test.js`: rope length, tangential speed, gravity/pumping, release momentum, range, collisions, jumps
 - `scripts/package-game.mjs`: self-contained HTML packaging
+
+## Host on GitHub Pages
+
+The `docs/` directory contains a self-contained browser version. To refresh both the hosted and downloadable games after a source change, run `npm run build:site`, then commit `docs/index.html` and `Play-Skybound.html` with the source changes.
+
+Once these hosting files are on `main`, open the repository on GitHub, go to **Settings → Pages**, select **Deploy from a branch**, choose **main** and **/docs**, then select **Save**. GitHub will show the live address when deployment finishes. The game will be publicly accessible. GitHub Pages availability for private repositories depends on the account plan; keep repository visibility unchanged unless explicitly approved.
+
+Players open the site in Chrome and click **Lock mouse & play**. Later site updates appear on refresh; browsers may need Ctrl+F5 to refresh cached files.
