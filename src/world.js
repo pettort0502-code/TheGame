@@ -72,9 +72,15 @@ for(let i=0;i<6;i++)block(`long-step-${i}`,-18+i*6,0,-60,4,1.5+i*1.8,6,'#bdb59f'
 block('highline',0,12,-70,48,.6,3,'#c5aa7d','Highline');
 for(const x of [-22,0,22])block(`highline-post-${x}`,x,0,-70,1.2,12,1.2,'#466774','Highline');
 function pad(id,x,z,dx,dz,y=0){boostPads.push({id,x,y,z,w:3,d:2.5,dx,dz,speed:24});}
-pad('plaza-launch',0,6,0,-1,.12);
+pad('plaza-launch',0,2,0,-1);
 pad('east-runway',5,15,1,0);pad('west-runway',-7,15,-1,0);
 pad('north-runway',6,-34,0,-1);pad('south-runway',0,32,0,1);
 pad('slide-entry',15,23,0,-1);pad('south-slide-entry',0,52,0,-1);
 pad('outer-east',42,7,0,1);pad('outer-west',-42,7,0,1);
 pad('highline-return',0,-78,0,1);
+
+// Walk into these items to collect them. Reset restores both pickups.
+export const itemPickups=[
+ {id:'plaza-grapple',type:'grapple',x:-1.5,y:.95,z:5,label:'GRAPPLE GUN'},
+ {id:'plaza-spear',type:'spear',x:1.5,y:.95,z:5,label:'LUNGE SPEAR'},
+];

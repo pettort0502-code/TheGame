@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED,halfHeight,canStand,boostPads} from './physics.js';
+import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED,halfHeight,canStand,boostPads,itemPickups,cycleItem,hasEquipped,SPEAR_SPEED} from './physics.js';
 const dt=1/120,idle={x:0,z:0};
 function settled(){return {...newPlayer(),grounded:true};}
 test('sandbox remains open in all directions without a finish trigger',()=>{
@@ -70,7 +70,7 @@ test('air steering and double jumps preserve boosted horizontal speed',()=>{
  assert.ok(Math.abs(Math.hypot(p.vx,p.vz)-20)<1e-8);assert.ok(p.vz< -19);assert.equal(p.doubleJumps,1);
 });
 const anchor={x:0,y:6.96,z:-15,surfaceId:'gantry-beam'};
-function swinger(){return {...newPlayer(),x:0,y:4,z:-11,vx:5,grounded:false};}
+function swinger(){return {...newPlayer(),inventory:['grapple'],equipped:'grapple',x:0,y:4,z:-11,vx:5,grounded:false};}
 test('hook reaches any valid surface within 20m and rejects blocked/sky shots',()=>{
  assert.equal(GRAPPLE_RANGE,20);const p={...newPlayer(),x:35,y:2,z:0};
  assert.ok(canGrapple(p,{x:35,y:.04,z:-19,surfaceId:'ground'}));assert.equal(canGrapple(p,{x:35,y:.04,z:-21,surfaceId:'ground'}),false);
@@ -136,4 +136,44 @@ test('boost pads launch in the marked direction once per crossing and retain spe
  for(let i=0;i<5;i++)step(p,idle,dt);assert.equal(p.boosts,1);assert.ok(Math.hypot(p.vx,p.vz)>23);
  step(p,{...idle,jump:true},dt);const vz=p.vz;step(p,idle,dt);assert.equal(p.vz,vz);
  const airborne={...newPlayer(),x:pad.x,y:5,z:pad.z};step(airborne,idle,dt);assert.equal(airborne.boosts,0);
+});
+test('start empty-handed and cannot use the grapple or spear before collecting them',()=>{
+ const p=newPlayer();assert.deepEqual(p.inventory,[]);assert.equal(p.equipped,null);
+ step(p,{...idle,use:true,target:{x:0,y:1,z:-7.46,surfaceId:'gantry-step'},facingZ:-1},dt);
+ assert.equal(p.grapple,null);assert.equal(p.lunges,0);assert.equal(p.hooks,0);
+});
+test('walking into pickups adds each item once and equips the first',()=>{
+ const p=newPlayer();for(const item of itemPickups){p.x=item.x;p.y=item.y;p.z=item.z;step(p,idle,dt);step(p,idle,dt);}
+ assert.deepEqual(p.inventory,['grapple','spear']);assert.equal(p.equipped,'grapple');assert.equal(p.collectedPickups.length,2);
+});
+test('switching cycles collected items, releases rope, and requires releasing a held use button',()=>{
+ const p={...swinger(),inventory:['grapple','spear'],useHeld:true,grapple:anchor};
+ assert.equal(cycleItem(p),'spear');assert.equal(p.grapple,null);assert.equal(p.requireRelease,true);
+ step(p,{...idle,use:true,facingZ:-1},dt);assert.equal(p.lunges,0);
+ step(p,idle,dt);step(p,{...idle,use:true,facingZ:-1},dt);assert.equal(p.lunges,1);
+ assert.equal(cycleItem(p),'grapple');assert.equal(hasEquipped(p,'grapple'),true);
+});
+test('only owned and equipped items can be used',()=>{
+ const p={...swinger(),equipped:'spear'};step(p,{...idle,use:true,target:anchor},dt);assert.equal(p.lunges,0);assert.equal(p.grapple,null);
+ const q={...swinger(),inventory:['grapple','spear'],equipped:'spear'};step(q,{...idle,use:true,target:anchor,facingZ:-1},dt);assert.equal(q.grapple,null);assert.equal(q.lunges,1);
+});
+test('spear lunges in the aimed direction at high speed, with a cooldown and no hold-to-repeat',()=>{
+ const p={...newPlayer(),x:-60,y:4,z:0,inventory:['spear'],equipped:'spear'};
+ step(p,{...idle,use:true,facingX:1,facingZ:0},dt);assert.equal(p.lunges,1);assert.equal(p.vx,SPEAR_SPEED);assert.equal(p.vz,0);
+ for(let i=0;i<20;i++)step(p,{...idle,use:true,facingX:1,facingZ:0},dt);assert.equal(p.lunges,1);
+ step(p,idle,dt);step(p,{...idle,use:true,facingX:1,facingZ:0},dt);assert.equal(p.lunges,1);
+});
+test('spear lunge cannot tunnel through a thin wall',()=>{
+ const p={...newPlayer(),x:14,y:3,z:-7,inventory:['spear'],equipped:'spear'};
+ for(let i=0;i<20;i++)step(p,{...idle,use:i===0,facingX:-1,facingZ:0},dt);
+ assert.ok(p.x>=12.67-1e-6);assert.equal(p.lunges,1);
+});
+test('falling preserves collected gear but reset starts a fresh inventory',()=>{
+ const p={...newPlayer(),x:100,y:-20,inventory:['grapple','spear'],equipped:'spear',collectedPickups:itemPickups.map(i=>i.id),lungeTime:.2};step(p,idle,dt);
+ assert.deepEqual(p.inventory,['grapple','spear']);assert.equal(p.equipped,'spear');assert.equal(p.lungeTime,0);assert.equal(newPlayer().inventory.length,0);
+});
+test('pressing slide just before landing buffers the slide instead of losing the input',()=>{
+ const p={...newPlayer(),x:-60,y:.73,z:0,vx:24,vy:-1};step(p,{x:1,z:0,slide:true},dt);
+ for(let i=0;i<25;i++)step(p,{x:1,z:0,slide:true},dt);
+ assert.equal(p.slides,1);assert.ok(p.slideTime>0);assert.ok(p.crouched);
 });

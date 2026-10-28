@@ -1,12 +1,12 @@
-import {world,SPAWN,boostPads} from './world.js';
-export {world,SPAWN,boostPads};
+import {world,SPAWN,boostPads,itemPickups} from './world.js';
+export {world,SPAWN,boostPads,itemPickups};
 export const RADIUS=.32, HALF_HEIGHT=.65;
 export const halfHeight=p=>p.crouched?.37:HALF_HEIGHT;
 export function canStand(p){
  const feet=p.y-halfHeight(p),head=feet+HALF_HEIGHT*2;
  return !world.some(w=>Math.abs(p.x-w.x)<w.w/2+RADIUS&&Math.abs(p.z-w.z)<w.d/2+RADIUS&&head>w.y-w.h/2+.01&&feet<w.y+w.h/2-.01);
 }
-function resetMovement(p){Object.assign(p,{crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,boostTime:0,padId:null,reelSpeed:0});}
+function resetMovement(p){Object.assign(p,{crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0});}
 
 export function wallContact(player) {
   let closest=null;
@@ -49,15 +49,39 @@ export function constrainRope(p){
  const inward=p.reelSpeed||0,currentRadial=p.vx*nx+p.vy*ny+p.vz*nz;
  if(currentRadial> -inward){const correction=currentRadial+inward;p.vx-=correction*nx;p.vy-=correction*ny;p.vz-=correction*nz;}
 }
+export const SPEAR_SPEED=42, SPEAR_COOLDOWN=1.4;
+export function hasEquipped(p,type){return p.equipped===type&&p.inventory.includes(type);}
+export function cycleItem(p){
+ if(p.inventory.length<2)return p.equipped;
+ const index=p.inventory.indexOf(p.equipped);p.equipped=p.inventory[(index+1)%p.inventory.length];
+ p.grapple=null;p.ropeLength=0;p.requireRelease=p.useHeld;return p.equipped;
+}
+function collectItems(p){
+ for(const item of itemPickups){
+  if(p.collectedPickups.includes(item.id)||Math.hypot(p.x-item.x,p.z-item.z)>1.15||Math.abs(p.y-item.y)>1.2)continue;
+  p.collectedPickups.push(item.id);
+  if(!p.inventory.includes(item.type))p.inventory.push(item.type);
+  if(!p.equipped){p.equipped=item.type;p.requireRelease=p.useHeld;}
+ }
+}
 export function step(player,input,dt) {
-  if(input.grapple&&!player.grappleHeld&&canGrapple(player,input.target)){
+  collectItems(player);
+  const use=Boolean(input.use??input.grapple);
+  if(!use)player.requireRelease=false;
+  const pressed=use&&!player.useHeld&&!player.requireRelease;
+  player.spearCooldown=Math.max(0,player.spearCooldown-dt);player.lungeTime=Math.max(0,player.lungeTime-dt);
+  if(hasEquipped(player,'grapple')&&pressed&&canGrapple(player,input.target)){
     player.grapple={...input.target};player.ropeLength=Math.hypot(input.target.x-player.x,input.target.y-player.y,input.target.z-player.z);player.hooks++;
   }
-  if(!input.grapple)player.grapple=null;player.grappleHeld=Boolean(input.grapple);
+  if(!use||!hasEquipped(player,'grapple'))player.grapple=null;
+  player.grappleHeld=use;player.useHeld=use;
   if(player.grapple&&!canGrapple(player,player.grapple,false))player.grapple=null;
   player.slideTime=Math.max(0,player.slideTime-dt);player.slideCooldown=Math.max(0,player.slideCooldown-dt);player.boostTime=Math.max(0,player.boostTime-dt);
+  player.slideBuffer=Math.max(0,player.slideBuffer-dt);
+  if(input.slide&&!player.slideHeld)player.slideBuffer=.3;
   const currentSpeed=Math.hypot(player.vx,player.vz);
-  if(input.slide&&!player.slideHeld&&player.grounded&&currentSpeed>=5&&player.slideCooldown===0){
+  if(player.slideBuffer>0&&player.grounded&&currentSpeed>=5&&player.slideCooldown===0){
+    player.slideBuffer=0;
     player.slideTime=1.2;player.slideCooldown=1.55;player.slides++;
     const boost=Math.max(12,currentSpeed+3)/currentSpeed;player.vx*=boost;player.vz*=boost;
   }
@@ -68,7 +92,9 @@ export function step(player,input,dt) {
   const magnitude=Math.hypot(input.x,input.z)||1,speed=player.crouched&&player.slideTime===0?4.5:player.boostTime>0?24:9;
   const contact=wallContact(player);player.wallNormal=contact?{x:contact.nx,z:contact.nz}:null;
   const moving=Boolean(input.x||input.z);player.controlLock=Math.max(0,player.controlLock-dt);
-  if(player.grounded&&(player.slideTime>0||player.boostTime>0)){
+  if(player.lungeTime>0){
+    // Preserve the initial burst until its short thrust animation finishes.
+  }else if(player.grounded&&(player.slideTime>0||player.boostTime>0)){
     const current=Math.hypot(player.vx,player.vz),heading=Math.atan2(player.vz,player.vx);
     const target=Math.atan2(input.z,input.x),delta=moving?Math.atan2(Math.sin(target-heading),Math.cos(target-heading)):0;
     const next=heading+Math.max(-1.8*dt,Math.min(1.8*dt,delta));
@@ -100,6 +126,12 @@ export function step(player,input,dt) {
     player.vx+=(ix-dot*nx)*18*dt;player.vy-=dot*ny*18*dt;player.vz+=(iz-dot*nz)*18*dt;
     const speed=Math.hypot(player.vx,player.vy,player.vz);if(speed>40){player.vx*=40/speed;player.vy*=40/speed;player.vz*=40/speed;}
   }
+  if(hasEquipped(player,'spear')&&pressed&&player.spearCooldown===0){
+    const fx=input.facingX??0,fy=Math.max(-.25,Math.min(.65,input.facingY??0)),fz=input.facingZ??-1,d=Math.hypot(fx,fy,fz)||1;
+    const speed=Math.max(SPEAR_SPEED,Math.hypot(player.vx,player.vy,player.vz));
+    player.vx=fx/d*speed;player.vz=fz/d*speed;player.vy=Math.max(fy/d*speed,2.5);
+    player.lungeTime=.24;player.spearCooldown=SPEAR_COOLDOWN;player.slideTime=0;player.lunges++;
+  }
   player.reelSpeed=0;
   if(player.grapple){
     player.reelSpeed=player.ropeLength>MIN_ROPE_LENGTH?REEL_SPEED:0;
@@ -112,7 +144,16 @@ export function step(player,input,dt) {
   const oldY=player.y;
   player.vy-=23*dt;
   if(contact&&!player.grounded&&player.vy< -3)player.vy=-3;
-  player.x+=player.vx*dt;player.z+=player.vz*dt;player.y+=player.vy*dt;player.grounded=false;
+  const substeps=Math.max(1,Math.ceil(Math.hypot(player.vx,player.vz)*dt/.18));
+  for(let i=0;i<substeps;i++){
+    player.x+=player.vx*dt/substeps;player.z+=player.vz*dt/substeps;
+    for(let j=0;j<4;j++){
+      const hit=wallContact(player);if(!hit||hit.depth<=0)break;
+      player.x+=hit.nx*hit.depth;player.z+=hit.nz*hit.depth;
+      const into=player.vx*hit.nx+player.vz*hit.nz;if(into<0){player.vx-=into*hit.nx;player.vz-=into*hit.nz;}
+    }
+  }
+  player.y+=player.vy*dt;player.grounded=false;
   constrainRope(player);
   const overlapping=world.filter(w=>Math.abs(player.x-w.x)<w.w/2+RADIUS&&Math.abs(player.z-w.z)<w.d/2+RADIUS);
   const landings=overlapping.filter(w=>player.vy<=0&&oldY-halfHeight(player)>=w.y+w.h/2-.015&&player.y-halfHeight(player)<=w.y+w.h/2).sort((a,b)=>(b.y+b.h/2)-(a.y+a.h/2));
@@ -128,13 +169,14 @@ export function step(player,input,dt) {
     const into=player.vx*collision.nx+player.vz*collision.nz;if(into<0){player.vx-=into*collision.nx;player.vz-=into*collision.nz;}
     player.wallNormal={x:collision.nx,z:collision.nz};
   }
+  collectItems(player);
   const pad=player.grounded?boostPads.find(p=>Math.abs(player.x-p.x)<p.w/2+RADIUS&&Math.abs(player.z-p.z)<p.d/2+RADIUS&&Math.abs(player.y-halfHeight(player)-p.y)<.18):null;
   if(pad&&pad.id!==player.padId){
     const speed=Math.max(pad.speed,Math.hypot(player.vx,player.vz)),d=Math.hypot(pad.dx,pad.dz);
     player.vx=pad.dx/d*speed;player.vz=pad.dz/d*speed;player.boostTime=1.3;player.boosts++;
   }
   player.padId=pad?.id||null;
-  if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.falls++;}
+  if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slides:0,boostTime:0,boosts:0,padId:null};}
+export function newPlayer(){return {...SPAWN,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,lungeTime:0,lunges:0};}
