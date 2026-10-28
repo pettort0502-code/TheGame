@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED} from './physics.js';
+import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED,halfHeight,canStand,boostPads} from './physics.js';
 const dt=1/120,idle={x:0,z:0};
 function settled(){return {...newPlayer(),grounded:true};}
 test('sandbox remains open in all directions without a finish trigger',()=>{
@@ -81,9 +81,9 @@ test('winch shortens the rope gradually while retaining sideways momentum',()=>{
  const p=swinger(),length=Math.hypot(p.x-anchor.x,p.y-anchor.y,p.z-anchor.z);
  step(p,{...idle,grapple:true,target:anchor},dt);
  assert.ok(p.grapple);assert.ok(Math.abs(p.ropeLength-(length-REEL_SPEED*dt))<1e-8);assert.ok(Math.hypot(p.vx,p.vy,p.vz)>=5);assert.equal(p.hooks,1);
- for(let i=0;i<60;i++)step(p,{...idle,grapple:true,target:anchor},dt);
- assert.ok(p.grapple);assert.ok(Math.abs(p.ropeLength-(length-REEL_SPEED*dt*61))<1e-8);assert.ok(p.x>1);
- assert.ok(Math.abs(Math.hypot(p.x-anchor.x,p.y-anchor.y,p.z-anchor.z)-p.ropeLength)<.001);
+ let maximumSideways=p.x;for(let i=0;i<60;i++){step(p,{...idle,grapple:true,target:anchor},dt);maximumSideways=Math.max(maximumSideways,p.x);}
+ assert.ok(p.grapple);assert.ok(Math.abs(p.ropeLength-Math.max(1.5,length-REEL_SPEED*dt*61))<1e-8);assert.ok(maximumSideways>1);
+ assert.ok(Math.hypot(p.x-anchor.x,p.y-anchor.y,p.z-anchor.z)<=p.ropeLength+.001);
 });
 test('rope redirects speed tangentially without straight-line pulling or pushing',()=>{
  const p={x:6,y:0,z:0,vx:4,vy:3,vz:0,ropeLength:5,grapple:{x:0,y:0,z:0}};
@@ -106,4 +106,34 @@ test('release preserves horizontal swing velocity and allows a fresh attachment'
 test('winch movement contributes inward launch velocity without removing lateral speed',()=>{
  const p={x:6,y:0,z:0,vx:0,vy:5,vz:0,ropeLength:5,reelSpeed:REEL_SPEED,grapple:{x:0,y:0,z:0}};
  constrainRope(p);assert.equal(p.vx,-REEL_SPEED);assert.equal(p.vy,5);
+});
+test('expanded map includes new districts, slide tunnels, and multiple launch pads',()=>{
+ assert.equal(world.find(w=>w.id==='ground').w,180);assert.ok(world.some(w=>w.x>50));assert.ok(world.some(w=>w.z>50));assert.ok(world.some(w=>w.z< -65));assert.ok(boostPads.length>=8);assert.ok(REEL_SPEED>=7);
+});
+test('slide lowers the collider without moving the feet and preserves ground momentum',()=>{
+ const p={...settled(),x:-60,y:.65,z:0,vx:9};const feet=p.y-halfHeight(p);
+ step(p,{x:1,z:0,slide:true},dt);assert.equal(p.slides,1);assert.ok(p.crouched&&p.slideTime>0);assert.ok(Math.abs(p.y-halfHeight(p)-feet)<1e-8);assert.ok(p.vx>11);
+ for(let i=0;i<30;i++)step(p,{x:1,z:0,slide:true},dt);assert.ok(p.vx>10);assert.equal(p.slides,1);
+});
+test('slide cooldown prevents repeated speed boosts',()=>{
+ const p={...settled(),x:-60,y:.65,z:0,vx:9};step(p,{...idle,slide:true},dt);step(p,idle,dt);step(p,{...idle,slide:true},dt);assert.equal(p.slides,1);
+});
+test('slide passes under a low tunnel and stays crouched until standing is safe',()=>{
+ const p={...settled(),x:15,y:.65,z:21,vz:-9};
+ for(let i=0;i<75;i++)step(p,{x:0,z:-1,slide:true},dt);
+ assert.ok(p.z<19&&p.z>11);assert.ok(p.crouched);assert.equal(canStand(p),false);
+ p.slideTime=0;step(p,idle,dt);assert.ok(p.crouched);assert.ok(p.y+halfHeight(p)<.95);
+ p.z=8;step(p,idle,dt);assert.equal(p.crouched,false);assert.ok(Math.abs(p.y-.65)<1e-8);
+});
+test('slide jump carries horizontal momentum into the air',()=>{
+ const p={...settled(),x:-60,y:.65,z:0,vx:20};step(p,{x:1,z:0,slide:true},dt);const speed=p.vx;
+ step(p,{x:1,z:0,slide:true,jump:true},dt);assert.ok(p.vy>12);assert.equal(p.grounded,false);assert.ok(p.vx>speed*.98);
+ const vx=p.vx;step(p,idle,dt);assert.equal(p.vx,vx);
+});
+test('boost pads launch in the marked direction once per crossing and retain speed in the air',()=>{
+ const pad=boostPads.find(p=>p.id==='plaza-launch'),p={...settled(),x:pad.x,y:pad.y+.65,z:pad.z};
+ step(p,idle,dt);assert.equal(p.boosts,1);assert.equal(p.vz,-24);assert.ok(p.boostTime>0);
+ for(let i=0;i<5;i++)step(p,idle,dt);assert.equal(p.boosts,1);assert.ok(Math.hypot(p.vx,p.vz)>23);
+ step(p,{...idle,jump:true},dt);const vz=p.vz;step(p,idle,dt);assert.equal(p.vz,vz);
+ const airborne={...newPlayer(),x:pad.x,y:5,z:pad.z};step(airborne,idle,dt);assert.equal(airborne.boosts,0);
 });
