@@ -115,7 +115,7 @@ function collectItems(p){
   if(!p.equipped){p.equipped=item.type;p.requireRelease=p.useHeld;}
  }
 }
-function shockwave(p){const power=Math.min(2.5,1+Math.max(0,Math.hypot(p.vx,p.vz)-12)/22);p.slamming=false;p.shockwaves++;p.shockwave={x:p.x,y:p.y-halfHeight(p),z:p.z,radius:7+Math.min(5,Math.max(0,Math.hypot(p.vx,p.vz)-12)/5),power};p.vy=16;p.grounded=false;p.airJump=true;}
+function shockwave(p){const power=Math.min(2.5,1+Math.max(0,Math.hypot(p.vx,p.vz)-12)/22);p.slamming=false;p.shockwaves++;p.shockwave={x:p.x,y:p.y-halfHeight(p),z:p.z,radius:7+Math.min(5,Math.max(0,Math.hypot(p.vx,p.vz)-12)/5),power};const fall=Math.max(0,(p.airPeakY??p.y)-p.y);p.vy=Math.min(48,Math.sqrt(16*16+2*GRAVITY*fall*1.15));p.shockwave.fallDistance=fall;p.shockwave.bounceSpeed=p.vy;p.airPeakY=p.y;p.grounded=false;p.airJump=true;}
 export function step(player,input,dt) {
   const riding=player.riding&&player.grounded?cargoAt(player.riding,player.time):null;
   player.time+=dt;syncCargo(player.time);
@@ -124,6 +124,7 @@ export function step(player,input,dt) {
   player.releaseDirection={x:input.facingX??0,y:input.facingY??0,z:input.facingZ??-1};
   if(player.grapple&&(player.grapple.droneId||player.grapple.enemyId||player.grapple.cargoId))player.grapple=resolveAnchor(player.grapple,player.time,player.enemyTargets);
   const wasGrounded=player.grounded;
+  player.airPeakY=player.grounded?player.y:Math.max(player.airPeakY??player.y,player.y);
   if(player.grounded)player.spearUses=2;
 
   collectItems(player);
@@ -207,6 +208,8 @@ export function step(player,input,dt) {
    player.hammerBuffer=0;player.hammerCooldown=1.8;player.slideTime=0;
    if(player.grounded)shockwave(player);else{player.slamming=true;player.vy=-32;}
   }
+  // Holding attack waits until the apex before preparing the next impact.
+  if(hasEquipped(player,'hammer')&&use&&!player.requireRelease&&player.vy<=0&&!player.grounded)player.slamming=true;
   if(player.slamming)player.vy=Math.min(player.vy,-32);
   player.grinding=Boolean(input.grind&&contact&&!player.grounded&&player.wallCooldown===0&&Math.hypot(player.vx,player.vz)>=6&&player.grindTime<2.5&&!player.grapple&&!player.slamming);
   if(player.grounded)player.grindTime=0;
@@ -256,6 +259,7 @@ export function step(player,input,dt) {
     player.wallNormal={x:collision.nx,z:collision.nz};
   }
   if(player.grounded&&player.slamming)shockwave(player);
+  else if(player.grounded)player.airPeakY=player.y;
   collectItems(player);
   const pad=player.grounded?boostPads.find(p=>Math.abs(player.x-p.x)<p.w/2+RADIUS&&Math.abs(player.z-p.z)<p.d/2+RADIUS&&Math.abs(player.y-halfHeight(player)-p.y)<.18):null;
   if(pad&&pad.id!==player.padId){
@@ -263,7 +267,7 @@ export function step(player,input,dt) {
     player.vx=pad.dx/d*speed;player.vz=pad.dz/d*speed;player.boostTime=1.3;player.boosts++;
   }
   player.padId=pad?.id||null;
-  if(player.y<(player.killHeight??-16)){Object.assign(player,player.respawnPoint||SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.spearUses=2;player.slamming=false;player.falls++;}
+  if(player.y<(player.killHeight??-16)){Object.assign(player,player.respawnPoint||SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.spearUses=2;player.slamming=false;player.airPeakY=player.y;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,riding:null,enemyTargets:[],recoverableItems:[],breakEvents:[],grinding:false,grindTime:0,grappleCharge:0,spearPower:1,slingshots:0,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,spearUses:2,lungeTime:0,lunges:0};}
+export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,riding:null,enemyTargets:[],recoverableItems:[],breakEvents:[],grinding:false,grindTime:0,grappleCharge:0,spearPower:1,slingshots:0,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],airPeakY:null,hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,spearUses:2,lungeTime:0,lunges:0};}

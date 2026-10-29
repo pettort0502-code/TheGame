@@ -22,7 +22,7 @@ function walker(id,x,top,z,stage,armored=false){levelWalkers.push({id,x,y:top+.7
 for(let stage=0;stage<chapters.length;stage++){
  const chapter=chapters[stage],nodes=[];
  for(let i=0;i<chapter.path.length-1;i++){
-  const a=chapter.path[i],b=chapter.path[i+1],steps=Math.ceil(Math.max(Math.hypot(b[0]-a[0],b[2]-a[2])/14.5,Math.abs(b[1]-a[1])/4));
+  const a=chapter.path[i],b=chapter.path[i+1],steps=Math.ceil(Math.max(Math.hypot(b[0]-a[0],b[2]-a[2])/34,Math.abs(b[1]-a[1])/8));
   for(let j=0;j<steps;j++){
    const t=j/steps,x=a[0]+(b[0]-a[0])*t,y=a[1]+(b[1]-a[1])*t,z=a[2]+(b[2]-a[2])*t,index=nodes.length;
    const fragile=stage===3&&index%3!==0,collapsing=(stage===7&&index>1)||(stage>=1&&stage!==3&&index>2&&index%4===2);
@@ -87,4 +87,14 @@ for(const nodes of routeNodes)for(const node of nodes){
 for(let stage=1;stage<8;stage++)for(let i=0;i<(stage===7?1:2);i++){
  const nodes=routeNodes[stage],n=nodes[Math.floor(nodes.length*(i===0?.4:.72))];
  levelLasers.push({id:`security-laser-${stage}-${i}`,x:n.x,y:n.y+.25,z:n.z,w:7,h:.25,d:.22,levelStage:stage,phase:stage*.71+i*1.9});
+}
+
+// Suspended stepping anchors bridge the wider voids without extending the 20m gun range.
+for(let stage=0;stage<routeNodes.length;stage++){
+ const nodes=routeNodes[stage];
+ for(let i=1;i<nodes.length;i++){
+  const a=nodes[i-1],b=nodes[i];
+  const hook=box(`gap-hook-${stage}-${i}`,(a.x+b.x)/2,Math.max(a.y,b.y)+3,(a.z+b.z)/2,1.8,.7,1.8,{zone:chapters[stage].name,color:'#4b9ca6'});
+  b.crossingHookId=hook.id;
+ }
 }

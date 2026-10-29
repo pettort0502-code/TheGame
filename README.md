@@ -110,7 +110,7 @@ Lunge through enemies with the spear to destroy them. Collision uses a swept str
 
 All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and twelve ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The testing sandbox’s safe plaza remains protected.
 
-The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams down from the air; touching down creates a 7m shockwave that destroys enemies and bounces you upward. Using it while grounded immediately blasts and bounces. It preserves horizontal momentum, refreshes the air jump, and has a 1.8s cooldown. Its held model swings during use.
+The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams down from the air; touching down creates a 7m shockwave that destroys enemies and bounces you upward. Using it while grounded immediately blasts and bounces. It preserves horizontal momentum and refreshes the air jump. Longer falls increase bounce speed from 16m/s up to 48m/s. Hold left-click/Q to chain bounces: rise to the apex, slam, and rebound automatically; release to stop chaining. Manual activations retain a 1.8s cooldown. Its held model swings during use.
 
 Only two items fit in your inventory. **G** or the **Throw item** button launches the equipped item toward the crosshair, frees one slot, and equips your other item. Thrown gear damages enemies on impact, collides with walls, and falls into a visible pickup that can be collected after landing; a full inventory cannot take another pickup. Right-click/E switches your two carried items. Reset restores the original pickups; Home/falling keeps your loadout and thrown-item locations.
 
@@ -154,3 +154,5 @@ Thirteen timed laser barriers cycle through an amber 0.65s warning, a red 1.7s l
 
 
 The spear has **two lunge charges per airborne stretch**. A real landing on any solid floor, ledge or cargo deck restores both charges; the 1.4s cooldown still applies between lunges. Wall kicks, double jumps, grappling, switching equipment and throwing/recalling the spear do not refill charges. Throws are separate from lunge charges. The ability HUD shows uses remaining and prompts you to land when empty. Checkpoint retries restore both charges.
+
+The campaign route now uses wider platform spacing (up to 34m horizontally), with suspended midpoint grapple anchors within the unchanged 20m range. Use grapple swings, spear lunges or earned momentum to cross the gaps.

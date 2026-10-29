@@ -251,3 +251,13 @@ test('wall kicks and double jumps do not restore spent spear lunges',()=>{
  step(p,{...idle,jump:true},dt);assert.equal(p.wallJumps,1);assert.equal(p.spearUses,0);
  Object.assign(p,{x:-60,y:10,z:0,controlLock:0});step(p,{...idle,jump:true},dt);assert.equal(p.doubleJumps,1);assert.equal(p.spearUses,0);
 });
+
+test('hammer bounce height scales with fall distance and sustained attack chains at the apex',()=>{
+ const make=y=>({...newPlayer(),x:-60,y,z:0,inventory:['hammer'],equipped:'hammer'});
+ const impact=y=>{const p=make(y);step(p,{...idle,use:true},dt);for(let i=0;i<400&&!p.shockwaves;i++)step(p,idle,dt);return p;};
+ const low=impact(3),high=impact(25);assert.ok(high.shockwave.bounceSpeed>low.shockwave.bounceSpeed+10);assert.ok(high.shockwave.fallDistance>20);assert.ok(high.shockwave.bounceSpeed<=48);
+ const p=make(.65);p.grounded=true;let apex=0,sawAscent=false;
+ for(let i=0;i<1600&&p.shockwaves<3;i++){step(p,{...idle,use:true},dt);apex=Math.max(apex,p.y);if(p.shockwaves===1&&p.vy>1){sawAscent=true;assert.equal(p.slamming,false);}}
+ assert.equal(p.shockwaves,3);assert.ok(sawAscent);assert.ok(apex>5);assert.equal(p.spearUses,2);
+ const released=make(.65);released.grounded=true;step(released,{...idle,use:true},dt);for(let i=0;i<600;i++)step(released,idle,dt);assert.equal(released.shockwaves,1);assert.equal(released.grounded,true);
+});
