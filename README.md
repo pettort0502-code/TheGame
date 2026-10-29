@@ -35,7 +35,7 @@ First collect the grapple gun from the left pickup, then try the tall beam just 
 
 Slides last up to 1.2 seconds, lower the physical collider, retain speed with light friction, and have a short cooldown to prevent repeated free speed boosts. Holding the slide key afterward keeps you crouched. Releasing stands up only when the ceiling is clear.
 
-There are eleven directional boost pads, including the course launch pad. Each crossing triggers once and grants a short ground-speed boost; airborne momentum is retained. The 180m-wide map has roughly 4.6 times the previous ground area.
+There are ten directional boost pads. Each crossing triggers once and grants a short ground-speed boost; airborne momentum is retained. The 180m-wide map has roughly 4.6 times the previous ground area.
 
 Both items have distinct visible first-person models. The spear thrusts forward during a lunge, and the grapple rope starts at the gun’s actual muzzle. Picked-up items disappear from the world. Returning home or falling keeps collected gear; Reset sandbox starts empty-handed and restores both pickups. Switching off the grapple detaches the rope and requires releasing the use button before the new item can fire.
 
@@ -77,16 +77,12 @@ The world uses smooth charcoal and indigo surfaces with cyan, magenta, and viole
 
 `src/neon-materials.js` supplies shared world/equipment materials and soft pickup halos. The previous pixel-texture generator has been removed. This visual theme changes no movement, item mechanics, collision boxes, or map layout. It uses no external texture assets or fullscreen bloom pass.
 
-## Neon Circuit, drones, and movement effects
+## Drones and movement effects
 
-Collect both plaza items, then press **T**, select **Time trial**, or walk through the start arch in the eastern district. Starting places you at the course with your collected gear and a three-second countdown. Pass seven numbered gates in order: boost, slide tunnel, rooftop, sky crossing, landing, return, finish. The HUD shows the next gate, direction, timer, and best time. Press T to retry. Home/reset cancels a run; falling off the world ends it. Escape pauses the run and countdown.
-
-The circuit supports several routes. Steps connect the rooftops, and two course drones provide faster aerial routes. Aim at a glowing drone body with the grapple equipped; its anchor point moves with it, and release retains your resulting velocity. A plaza drone and a swing-forest drone are also available in free roam. Small screen markers identify visible drones and light up when reachable. These are aerial grapple targets, not platforms to stand on. The existing 20m grapple range and item-pickup rules remain.
-
-Medals: gold at 25 seconds or faster, silver at 40, bronze at 65. Completed times stay fixed until the next run. Personal best is saved in browser storage when available; blocked storage does not prevent play. Best times are specific to the course version and browser.
+Four moving drones provide grapple targets around the plaza, eastern sandbox, and swing forest. Aim at a glowing drone body with the grapple equipped; its anchor moves with it, and release retains your resulting velocity. Screen markers identify visible drones and light up when reachable. These are aerial grapple targets, not platforms to stand on. The 20m grapple range and item-pickup rules apply.
 
 Landings create expanding neon rings, sparks, a subtle lower-screen impact flash, and a small hand dip scaled by impact speed. Fast movement adds cyan world trails and peripheral speed streaks, fading out below 14m/s. Effects use reusable pools and do not add movement penalties or camera shake.
 
-`src/trial.js` handles the race, `src/drones.js` supplies deterministic moving anchors, `src/course-visuals.js` draws the course, and `src/movement-effects.js` handles the effects. Tests include a complete physical run through every gate using both course drones.
+`src/drones.js` supplies moving anchors and `src/movement-effects.js` handles landing and speed effects.
 
 Spear activation captures quick taps between physics updates and buffers clicks in the final 0.12s of cooldown. Holding use does not repeat lunges; switch, pause, home, and reset clear pending clicks. Gravity is 28m/s² with jump impulses adjusted to retain jump height while shortening airtime; horizontal air momentum is unchanged.
