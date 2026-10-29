@@ -177,3 +177,8 @@ test('pressing slide just before landing buffers the slide instead of losing the
  for(let i=0;i<25;i++)step(p,{x:1,z:0,slide:true},dt);
  assert.equal(p.slides,1);assert.ok(p.slideTime>0);assert.ok(p.crouched);
 });
+test('landing events report an impact once on touchdown, with stronger effects for harder falls',()=>{
+ const p={...newPlayer(),x:75,y:7,z:5};for(let i=0;i<180;i++)step(p,idle,dt);
+ assert.equal(p.landings,1);assert.ok(p.landingImpact>10);assert.equal(p.landingY,.035);
+ for(let i=0;i<120;i++)step(p,idle,dt);assert.equal(p.landings,1);
+});

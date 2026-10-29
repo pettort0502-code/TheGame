@@ -1,3 +1,4 @@
+import {resolveAnchor} from './drones.js';
 import {world,SPAWN,boostPads,itemPickups} from './world.js';
 export {world,SPAWN,boostPads,itemPickups};
 export const RADIUS=.32, HALF_HEIGHT=.65;
@@ -24,10 +25,11 @@ export const GRAPPLE_RANGE=20;
 export const REEL_SPEED=7, MIN_ROPE_LENGTH=1.5;
 function segmentHit(a,b,w){let lo=0,hi=1;for(const [axis,size] of [['x','w'],['y','h'],['z','d']]){const d=b[axis]-a[axis],min=w[axis]-w[size]/2,max=w[axis]+w[size]/2;if(Math.abs(d)<1e-8){if(a[axis]<min||a[axis]>max)return null;}else{let t1=(min-a[axis])/d,t2=(max-a[axis])/d;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2);if(lo>hi)return null;}}return lo;}
 export function canGrapple(p,a,checkRange=true){
+ a=resolveAnchor(a,p.time||0);
  if(!a||![a.x,a.y,a.z].every(Number.isFinite))return false;
  const d=Math.hypot(a.x-p.x,a.y-p.y,a.z-p.z);if(d<.1||(checkRange&&d>GRAPPLE_RANGE))return false;
- const w=world.find(w=>w.id===a.surfaceId);if(!w)return false;
- const faces=[['x','w'],['y','h'],['z','d']].map(([axis,size])=>Math.abs(a[axis]-w[axis])-w[size]/2);
+ const w=world.find(w=>w.id===a.surfaceId);if(!w&&!a.droneId)return false;
+ const faces=w?[['x','w'],['y','h'],['z','d']].map(([axis,size])=>Math.abs(a[axis]-w[axis])-w[size]/2):[0];
  if(faces.some(d=>d>.08)||!faces.some(d=>Math.abs(d)<.08))return false;
  return !world.some(w=>{const t=segmentHit(p,a,w);return t!==null&&t<.995;});
 }
@@ -37,6 +39,8 @@ export function constrainRope(p){
  if(d<p.ropeLength)return; // Slack rope cannot push the player away.
  const nx=dx/d,ny=dy/d,nz=dz/d;
  p.x=a.x+nx*p.ropeLength;p.y=a.y+ny*p.ropeLength;p.z=a.z+nz*p.ropeLength;
+ const avx=a.anchorVx||0,avy=a.anchorVy||0,avz=a.anchorVz||0;
+ p.vx-=avx;p.vy-=avy;p.vz-=avz;
  const radial=p.vx*nx+p.vy*ny+p.vz*nz;
  if(radial>0){
   const speed=Math.hypot(p.vx,p.vy,p.vz);
@@ -48,6 +52,7 @@ export function constrainRope(p){
  // Position correction and launch velocity must agree with the moving winch.
  const inward=p.reelSpeed||0,currentRadial=p.vx*nx+p.vy*ny+p.vz*nz;
  if(currentRadial> -inward){const correction=currentRadial+inward;p.vx-=correction*nx;p.vy-=correction*ny;p.vz-=correction*nz;}
+ p.vx+=avx;p.vy+=avy;p.vz+=avz;
 }
 export const SPEAR_SPEED=42, SPEAR_COOLDOWN=1.4;
 export function hasEquipped(p,type){return p.equipped===type&&p.inventory.includes(type);}
@@ -65,13 +70,17 @@ function collectItems(p){
  }
 }
 export function step(player,input,dt) {
+  player.time+=dt;
+  if(player.grapple?.droneId)player.grapple=resolveAnchor(player.grapple,player.time);
+  const wasGrounded=player.grounded;
+
   collectItems(player);
   const use=Boolean(input.use??input.grapple);
   if(!use)player.requireRelease=false;
   const pressed=use&&!player.useHeld&&!player.requireRelease;
   player.spearCooldown=Math.max(0,player.spearCooldown-dt);player.lungeTime=Math.max(0,player.lungeTime-dt);
   if(hasEquipped(player,'grapple')&&pressed&&canGrapple(player,input.target)){
-    player.grapple={...input.target};player.ropeLength=Math.hypot(input.target.x-player.x,input.target.y-player.y,input.target.z-player.z);player.hooks++;
+    player.grapple={...resolveAnchor(input.target,player.time)};player.ropeLength=Math.hypot(player.grapple.x-player.x,player.grapple.y-player.y,player.grapple.z-player.z);player.hooks++;
   }
   if(!use||!hasEquipped(player,'grapple'))player.grapple=null;
   player.grappleHeld=use;player.useHeld=use;
@@ -157,7 +166,7 @@ export function step(player,input,dt) {
   constrainRope(player);
   const overlapping=world.filter(w=>Math.abs(player.x-w.x)<w.w/2+RADIUS&&Math.abs(player.z-w.z)<w.d/2+RADIUS);
   const landings=overlapping.filter(w=>player.vy<=0&&oldY-halfHeight(player)>=w.y+w.h/2-.015&&player.y-halfHeight(player)<=w.y+w.h/2).sort((a,b)=>(b.y+b.h/2)-(a.y+a.h/2));
-  if(landings.length){const w=landings[0];player.y=w.y+w.h/2+halfHeight(player);player.vy=0;player.grounded=true;}
+  if(landings.length){const w=landings[0];if(!wasGrounded&&player.vy< -2){player.landings++;player.landingImpact=-player.vy;player.landingX=player.x;player.landingY=w.y+w.h/2+.035;player.landingZ=player.z;}player.y=w.y+w.h/2+halfHeight(player);player.vy=0;player.grounded=true;}
   if(player.vy>0){
     const ceilings=overlapping.filter(w=>oldY+halfHeight(player)<=w.y-w.h/2+.015&&player.y+halfHeight(player)>=w.y-w.h/2).sort((a,b)=>(a.y-a.h/2)-(b.y-b.h/2));
     if(ceilings.length){player.y=ceilings[0].y-ceilings[0].h/2-halfHeight(player);player.vy=0;}
@@ -179,4 +188,4 @@ export function step(player,input,dt) {
   if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,lungeTime:0,lunges:0};}
+export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,lungeTime:0,lunges:0};}

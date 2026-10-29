@@ -84,3 +84,15 @@ export const itemPickups=[
  {id:'plaza-grapple',type:'grapple',x:-1.5,y:.95,z:5,label:'GRAPPLE GUN'},
  {id:'plaza-spear',type:'spear',x:1.5,y:.95,z:5,label:'LUNGE SPEAR'},
 ];
+
+// Neon Circuit: an optional route in the eastern sandbox, with physical ramps
+// and decks so every checkpoint is reachable without a moving-anchor trick.
+block('course-slide-left',32,0,42,.5,1.5,8,'#4b9ca6','Neon Circuit');
+block('course-slide-right',36,0,42,.5,1.5,8,'#4b9ca6','Neon Circuit');
+block('course-slide-ceiling',34,.95,42,4.5,.35,8,'#caab7f','Neon Circuit');
+block('course-step-1',40,0,46,4,1.2,4,'#c5b397','Neon Circuit');
+block('course-step-2',43,0,47,4,2.4,5,'#c5b397','Neon Circuit');
+block('course-roof-a',47,3,47,8,.6,8,'#c6b69b','Neon Circuit');
+block('course-step-3',53,0,53,6,4,6,'#c5b397','Neon Circuit');
+block('course-roof-b',60,5.5,56,8,.6,8,'#c6b69b','Neon Circuit');
+pad('course-launch',34,32,0,1);

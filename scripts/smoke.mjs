@@ -30,10 +30,22 @@ try{
  await page.keyboard.down('KeyW');await page.waitForFunction(()=>Number(document.getElementById('speed').textContent)>20);await page.keyboard.down('KeyC');await page.waitForFunction(()=>document.body.classList.contains('sliding'));await page.screenshot({path:'/tmp/skybound-slide.png'});await page.keyboard.up('KeyC');await page.keyboard.up('KeyW');
  await page.keyboard.press('Escape');await page.waitForFunction(()=>!document.pointerLockElement&&!document.getElementById('menu').hidden);const speed=await page.locator('#speed').textContent();await page.waitForTimeout(300);assert.equal(await page.locator('#speed').textContent(),speed);
  await page.locator('#menu-home').click();await page.waitForFunction(()=>document.pointerLockElement?.tagName==='CANVAS');await page.waitForSelector('#item-grapple.owned');await page.screenshot({path:'/tmp/skybound-desktop.png'});
+ // Aim at a real moving drone using the same captured relative mouse input.
+ await home(page);const marker=page.locator('[data-drone="plaza-drone"]');await marker.waitFor({state:'visible'});
+ for(let i=0;i<30;i++){
+  if((await page.locator('#ability-text').textContent()).startsWith('DRONE READY'))break;
+  const box=await marker.boundingBox();assert.ok(box,'plaza drone is visible');
+  await page.evaluate(({dx,dy})=>document.dispatchEvent(new MouseEvent('mousemove',{movementX:dx,movementY:dy,bubbles:true})),{dx:(box.x+box.width/2-720)*.5,dy:(box.y+box.height/2-450)*.5});
+  await page.evaluate(()=>new Promise(requestAnimationFrame));
+ }
+ await text(page,'ability-text',/^DRONE READY/);await page.mouse.down();await text(page,'ability-text',/^DRONE SWING/);await page.screenshot({path:'/tmp/skybound-drone.png'});await page.mouse.up();await home(page);
+ await page.keyboard.press('KeyT');await text(page,'trial-status',/^STARTING IN/);await page.screenshot({path:'/tmp/skybound-trial.png'});
+ await page.keyboard.press('Escape');const countdown=await page.locator('#trial-status').textContent();await page.waitForTimeout(400);assert.equal(await page.locator('#trial-status').textContent(),countdown);await page.locator('#play').click();await text(page,'trial-status',/^CHECKPOINT 1/);
+ await page.keyboard.down('KeyW');await text(page,'trial-status',/^CHECKPOINT 2/);await page.keyboard.up('KeyW');await home(page);await text(page,'trial-status',/^Collect both/);
  await page.keyboard.press('KeyR');await text(page,'ability-text',/^NO ITEM/);assert.equal(await page.locator('#item-grapple').evaluate(e=>e.classList.contains('owned')),false);await page.keyboard.press('Escape');
  const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});mobile.on('pageerror',e=>errors.push(e.message));await load(mobile);await mobile.locator('#play').tap();await collect(mobile,'grapple');await collect(mobile,'spear');
  assert.ok(await mobile.locator('#slide').isVisible());assert.ok(await mobile.locator('#switch-item').isVisible());await mobile.locator('#switch-item').tap();await mobile.waitForSelector('#item-spear.equipped');
  const use=await mobile.locator('#hook').boundingBox();await mobile.mouse.move(use.x+use.width/2,use.y+use.height/2);await mobile.mouse.down();await mobile.waitForFunction(()=>Number(document.getElementById('speed').textContent)>35);await mobile.mouse.up();await mobile.screenshot({path:'/tmp/skybound-mobile.png'});await mobile.close();
  const denied=await browser.newPage();denied.on('pageerror',e=>errors.push(e.message));await load(denied);await denied.evaluate(()=>HTMLCanvasElement.prototype.requestPointerLock=()=>Promise.reject(new Error('Denied')));await denied.locator('#play').click();await denied.waitForSelector('#capture-error:not([hidden])');assert.ok(await denied.locator('#menu').isVisible());await denied.close();
- assert.deepEqual(errors,[]);console.log('Browser smoke passed: empty-hand gating, both real pickups, right-click switching, safe grapple detach, spear lunge, Q hook/release, aim/glow, mouse capture, slide/boost, reset inventory, mobile item switching/use; no page errors.');
+ assert.deepEqual(errors,[]);console.log('Browser smoke passed: empty-hand gating, both real pickups, right-click switching, safe grapple detach, spear lunge, Q hook/release, aim/glow, mouse capture, slide/boost, reset inventory, moving drone grapple, trial countdown/pause/checkpoint, mobile item switching/use; no page errors.');
 }finally{await browser.close();}
