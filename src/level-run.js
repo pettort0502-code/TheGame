@@ -1,7 +1,8 @@
-import {checkpoints,chapters,requiredByStage,portal,routeNodes} from './level-data.js';
+import {checkpoints,chapters,requiredByStage,portal,routeNodes,HARD_RULES} from './level-data.js';
 import {world,itemPickups} from './world.js';
+import {laserHits} from './level-hazards.js';
 import {newPlayer} from './physics.js';
-export function newRun(){return {stage:0,elapsed:0,deaths:0,completed:false,loadout:[],equipped:null,nav:0,escapeRemaining:120,revision:0};}
+export function newRun(){return {stage:0,elapsed:0,deaths:0,completed:false,loadout:[],equipped:null,nav:0,escapeRemaining:HARD_RULES.escapeSeconds,revision:0};}
 export function remainingGuards(run,combat){return combat.sentries.filter(e=>requiredByStage[run.stage]?.includes(e.id)&&!e.dead);}
 export function activateStage(run,p,combat){
  p.campaign=true;p.levelStage=run.stage;p.enemyTargets=combat.sentries;
@@ -19,7 +20,7 @@ export function checkpointSpawn(run,p,combat,countDeath=false){
  Object.assign(p,newPlayer(),cp,{time,falls,campaign:true,inventory:[...run.loadout],equipped:run.loadout.includes(run.equipped)?run.equipped:run.loadout[0]||null,respawnPoint:{x:cp.x,y:cp.y,z:cp.z},killHeight:cp.y-24});
  p.collectedPickups=itemPickups.filter(i=>p.inventory.includes(i.type)).map(i=>i.id);
  armory(p,cp);activateStage(run,p,combat);combat.shots=[];combat.falls=p.falls;combat.invulnerable=3;combat.flash=countDeath?.18:0;combat.seenShockwaves=0;
- run.nav=0;run.escapeRemaining=120;run.revision++;
+ run.nav=0;run.escapeRemaining=HARD_RULES.escapeSeconds;run.revision++;
  return cp;
 }
 export function objective(run,combat){
@@ -28,17 +29,17 @@ export function objective(run,combat){
  const guards=remainingGuards(run,combat).length;
  return `${chapters[run.stage].name} · ${guards?`${guards} relay guard${guards===1?'':'s'} remaining`:'Relay clear · reach the checkpoint beacon'}`;
 }
-export function tickRun(run,p,combat,dt,hit=false,previousFalls=p.falls){
+export function tickRun(run,p,combat,dt,hit=false,previousFalls=p.falls,previousPosition=p){
  if(run.completed)return null;
  run.elapsed+=dt;
  const cp=checkpoints[run.stage];
  if(run.stage===7)run.escapeRemaining=Math.max(0,run.escapeRemaining-dt);
- if(hit||p.falls!==previousFalls||run.stage===7&&run.escapeRemaining===0)return 'death';
+ if(hit||p.falls!==previousFalls||combat.invulnerable===0&&laserHits(p,previousPosition,run.stage)||run.stage===7&&run.escapeRemaining===0)return 'death';
  if(Math.hypot(p.x-cp.x,p.z-cp.z)<7&&Math.abs(p.y-cp.y)<3){run.loadout=[...p.inventory];run.equipped=p.equipped;}
- // Escape decks warn for 1.2 seconds after landing, then fall away.
+ // Orange decks flash briefly after landing, then fall away.
  for(const w of [...world])if(w.collapsing&&!w.destroyed){
   if(p.grounded&&Math.abs(p.x-w.x)<w.w/2&&Math.abs(p.z-w.z)<w.d/2&&Math.abs(p.y-.65-w.y-w.h/2)<.08)w.collapseTimer=Math.max(w.collapseTimer||0,.001);
-  if(w.collapseTimer>0){w.collapseTimer+=dt;if(w.collapseTimer>=1.2){w.destroyed=true;world.splice(world.indexOf(w),1);}}
+  if(w.collapseTimer>0){w.collapseTimer+=dt;if(w.collapseTimer>=HARD_RULES.collapseSeconds){w.destroyed=true;world.splice(world.indexOf(w),1);}}
  }
  if(run.stage===chapters.length){if(Math.abs(p.x-portal.x)<2.5&&Math.abs(p.y-portal.y)<3&&Math.abs(p.z-portal.z)<1.5){run.completed=true;run.revision++;return 'complete';}return null;}
  const nodes=routeNodes[run.stage];
@@ -47,7 +48,7 @@ export function tickRun(run,p,combat,dt,hit=false,previousFalls=p.falls){
  if(Math.hypot(p.x-next.x,p.z-next.z)<3.3&&Math.abs(p.y-next.y)<2.2&&remainingGuards(run,combat).length===0){
   run.stage++;run.nav=0;run.loadout=[...p.inventory];run.equipped=p.equipped;run.revision++;
   const saved=checkpoints[run.stage];p.respawnPoint={x:saved.x,y:saved.y,z:saved.z};p.killHeight=saved.y-24;p.grapple=null;p.grappleCharge=0;p.requireRelease=p.useHeld;
-  armory(p,saved);activateStage(run,p,combat);combat.shots=[];combat.invulnerable=3;run.escapeRemaining=120;return 'checkpoint';
+  armory(p,saved);activateStage(run,p,combat);combat.shots=[];combat.invulnerable=3;run.escapeRemaining=HARD_RULES.escapeSeconds;return 'checkpoint';
  }
  return null;
 }

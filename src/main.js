@@ -32,7 +32,7 @@ if(campaign){
  document.querySelector('.eyebrow').textContent=LEVEL_NAME;
  document.querySelector('.menu-card .label').textContent='LEVEL 01 / BLACKOUT SPIRE';
  $('menu-title').textContent='Break the blackout.';
- document.querySelector('.menu-card p').innerHTML='A challenging first-clear target of about 10 minutes.<br>Disable eight security relays and reach the portal.<br>Choose two weapons. Follow the cyan route arrows.<br>One hit or a fall returns you to your checkpoint.<br>Escape pauses. R restarts the level.';
+ document.querySelector('.menu-card p').innerHTML='Hard route: tight landings, crossfire and timed laser barriers.<br>Disable eight security relays and reach the portal.<br>Choose two weapons. Follow the cyan route arrows.<br>One hit or a fall returns you to your checkpoint.<br>Escape pauses. R restarts the level.';
  for(const id of ['home','menu-home'])$(id).textContent='Retry checkpoint';
  for(const id of ['restart','menu-reset'])$(id).textContent='Restart Level 01';
  document.querySelector('.bottom .title').textContent='Blackout Spire';$('mission').hidden=false;
@@ -269,7 +269,7 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   if(before.grounded&&!player.grounded&&player.vy>0&&!player.slamming)audio.play('jump');
   const defeated=tickCombat(combat,player,before,1/120);
   for(const event of combat.events)audio.play(event.type,event,player);
-  if(campaign){const event=tickRun(run,player,combat,1/120,defeated,before.falls);
+  if(campaign){const event=tickRun(run,player,combat,1/120,defeated,before.falls,before);
    if(event==='death'){returnHome(true);notice('Checkpoint restored · dodge the next shot.');}
    if(event==='checkpoint'){audio.play('recall');notice(`CHECKPOINT ${run.stage+1} SAVED · ${run.stage===8?'portal powered':chapters[run.stage].name}`);}
    if(event==='complete'){setPaused(true);$('menu').hidden=true;$('level-complete').hidden=false;$('complete-summary').textContent=`${Math.floor(run.elapsed/60)}:${String(Math.floor(run.elapsed%60)).padStart(2,'0')} · ${run.deaths} deaths · all relays disabled`;}
@@ -301,11 +301,11 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   hand.rotation.set(-.35-pose.tuck*1.5,0,-side*(.15+pose.tuck*.55));
  });
  updateCamera(dt);
- surfaces.forEach(m=>{const w=m.userData.surface;m.visible=!w.destroyed;if(w.cargoId){m.position.set(w.x,w.y,w.z);m.updateMatrixWorld(true);}});
+ surfaces.forEach(m=>{const w=m.userData.surface;m.visible=!w.destroyed;if(w.collapsing)m.material.emissiveIntensity=w.collapseTimer>0?1.4+Math.sin(player.time*30)*.6:.9;if(w.cargoId){m.position.set(w.x,w.y,w.z);m.updateMatrixWorld(true);}});
  enemies.tick(combat,player,player.time);
  $('hit-marker').hidden=combat.hitMarker<=0;
  const threats=combat.sentries.filter(e=>!e.dead&&e.charge>0).sort((a,b)=>b.charge-a.charge);$('threat-warning').hidden=threats.length===0;
- if(threats.length){const e=threats[0],angle=Math.atan2(-(e.x-player.x),-(e.z-player.z)),delta=Math.atan2(Math.sin(yaw-angle),Math.cos(yaw-angle)),arrow=Math.abs(delta)>2.3?'↓':delta>.3?'→':delta<-.3?'←':'↑';$('threat-warning').textContent=`${arrow} INCOMING FIRE ${Math.round(e.charge/.65*100)}% · dodge`; $('threat-warning').style.borderColor=e.charge>.4?'#ff596e':'#ffb347';}
+ if(threats.length){const e=threats[0],angle=Math.atan2(-(e.x-player.x),-(e.z-player.z)),delta=Math.atan2(Math.sin(yaw-angle),Math.cos(yaw-angle)),arrow=Math.abs(delta)>2.3?'↓':delta>.3?'→':delta<-.3?'←':'↑';$('threat-warning').textContent=`${arrow} INCOMING FIRE ${Math.round(e.charge/(e.windup||.65)*100)}% · dodge`; $('threat-warning').style.borderColor=e.charge>.4?'#ff596e':'#ffb347';}
  $('run-status').textContent=campaign?`CHECKPOINT ${run.stage+1} / 9 · DEATHS ${run.deaths}`:`HITS ${combat.hits} · KILLS ${combat.kills}`;$('damage-flash').style.opacity=combat.flash*2;
  movementFx.tick(player,dt,paused);$('landing-flash').style.opacity=movementFx.impact;
  droneMeshes.forEach(d=>{const pos=d.group.position.clone().project(camera),visible=!player.deadDrones.includes(d.route.id)&&combat.sentries.find(e=>e.id===d.route.id)?.active!==false&&pos.z> -1&&pos.z<1&&Math.abs(pos.x)<.95&&Math.abs(pos.y)<.95;d.marker.hidden=!visible;if(visible){d.marker.style.left=`${(pos.x*.5+.5)*innerWidth}px`;d.marker.style.top=`${(-pos.y*.5+.5)*innerHeight}px`;d.marker.classList.toggle('reachable',canGrapple(player,{droneId:d.route.id,offset:{x:0,y:-.29,z:0}}));}});
@@ -333,7 +333,7 @@ $('reticle').style.color=ready||player.grapple?'#1ab2bd':'#ffffffaa';
  $('hooks').textContent=player.hooks;$('jumps').textContent=player.wallJumps;$('speed').textContent=Math.hypot(player.vx,player.vz).toFixed(1);
  $('progress').textContent=player.crouched?'Stay low through the slide tunnels. Release Shift/C to stand when clear.':player.wallNormal&&!player.grounded?'Press Space to kick off the wall and refresh your double jump.':!player.grounded&&player.airJump?'One more jump available. Catch a high surface to swing.':'V wall grinds. B recalls gear. Hold grapple to charge a slingshot. Cyan glass breaks at speed.';
  if(campaign){
-  campaignFx.tick(run,clock.elapsedTime);$('mission-title').textContent=run.stage<8?`${run.stage+1} / 8 · ${chapters[run.stage].name.toUpperCase()}`:'PORTAL ONLINE';$('mission-goal').textContent=objective(run,combat);
+  campaignFx.tick(run,clock.elapsedTime,player.time);$('mission-title').textContent=run.stage<8?`${run.stage+1} / 8 · ${chapters[run.stage].name.toUpperCase()}`:'PORTAL ONLINE';$('mission-goal').textContent=objective(run,combat);
   const node=run.stage<8?routeNodes[run.stage][run.nav]:portal,angle=Math.atan2(-(node.x-player.x),-(node.z-player.z)),delta=Math.atan2(Math.sin(yaw-angle),Math.cos(yaw-angle)),arrow=Math.abs(delta)>2.3?'↓':delta>.3?'→':delta<-.3?'←':'↑';
   $('mission-waypoint').textContent=`${arrow} ${Math.round(Math.hypot(node.x-player.x,node.z-player.z))}m · ${run.stage===7?`OVERLOAD ${Math.ceil(run.escapeRemaining)}s`:'follow cyan arrows'}`;
   $('progress').textContent=run.stage<8?chapters[run.stage].hint:'Enter the portal. Level 02 will be connected in a future update.';

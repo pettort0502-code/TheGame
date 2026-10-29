@@ -4,7 +4,7 @@ The default game is **Level 01: Blackout Spire**, an authored action-platforming
 
 There are nine checkpoint locations including the entry dock. Required guards must be defeated before the next relay activates. A hit or fall immediately retries the latest checkpoint: there is no shield or health pool. Retries restore the checkpoint's two-item loadout, reset the current encounter, refill its armory and grant three seconds of grace. Previous relays stay cleared. **Retry checkpoint** returns without restarting the level; **R / Restart Level 01** starts a new run. Checkpoints last for the current session. Escape pauses both the level and the final overload countdown.
 
-The level has dock infiltration, a switchback tower, a cargo interception, a glass chasm, a foundry lockdown, a high ascent, three armored reactor cores and an emergency evacuation. The escape has a two-minute overload window and orange platforms that collapse 1.2 seconds after landing; retrying restores them. Cyan floor arrows, numbered checkpoint beacons and the objective HUD guide the route. Actual playtime depends on movement skill, combat and retries; there is no mandatory ten-minute wait.
+The level has dock infiltration, a switchback tower, a cargo interception, a glass chasm, a foundry lockdown, a high ascent, three armored reactor cores and an emergency evacuation. The escape has a 75-second overload window and orange platforms that collapse 0.65 seconds after landing; retrying restores them. Cyan floor arrows, numbered checkpoint beacons and the objective HUD guide the route. Actual playtime depends on movement skill, combat and retries; there is no mandatory ten-minute wait.
 
 The earlier mechanics-testing sandbox remains accessible by appending `#sandbox` to the game URL. The historical mechanics and sandbox notes below describe that test map; the campaign uses its own authored world and encounters.
 
@@ -142,3 +142,12 @@ Four vertical districts (Skyforge, Neon Ascent, Cloud Gantry and Reactor Highris
 
 
 Campaign data and geometry live in `src/level-data.js`; `src/level-world.js` selects the authored level or legacy sandbox; `src/level-run.js` handles checkpoint, encounter, collapse, overload and portal state. `src/level-visuals.js` draws the route, checkpoint beacons and portal. `npm run test:level` checks the default campaign in Chromium, including an actual fall/retry and loadout restoration. The existing browser smoke checks the legacy sandbox with `#sandbox`.
+
+
+## Hard route tuning
+
+Blackout Spire now uses substantially tighter traversal: most ledges are 5m wide, escape ledges are 3.8m wide, and anchor spacing permits larger gaps while staying inside 20m grapple reach. Glass is more frequent. Orange ledges appear during the high ascent and escape and collapse 0.65 seconds after landing. The final overload gives 75 seconds.
+
+There are 43 required relay targets, with extra crossfire turrets, armored late-stage gunners and drone patrols. Campaign shots travel at 22m/s in the dock and 26m/s afterward, with 0.5–0.6s warning charges and faster firing. Later turrets and drones fire three-shot spreads; pursuing ground enemies move at 4.5m/s. These changes do not change the legacy sandbox's shooting rates.
+
+Six timed laser barriers cycle through an amber 0.8s warning, a red 1.35s lethal beam and an off period. Jump, grapple above, or wait for the beam to turn off. Laser collisions use swept player movement, and pause freezes their phase. Checkpoints, armories, one-hit retries and the three-second respawn grace remain. Clear times will vary more with retries on the harder route.

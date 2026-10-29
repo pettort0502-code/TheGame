@@ -92,3 +92,9 @@ test('a thrown javelin aimed at the core gets weak-point damage before the coars
  for(let i=0;i<40&&!e.dead;i++){p.time+=dt;tickCombat(c,p,p,dt);weak||=c.events.some(event=>event.type==='weak');}
  assert.equal(e.dead,true);assert.ok(weak);
 });
+
+test('campaign crossfire uses faster three-shot spreads while sandbox shots retain their original speed',()=>{
+ const c=newCombat(),p={...newPlayer(),x:110,y:30,z:60,campaign:true};c.sentries=[{id:'hard-shot-test',x:100,y:30,z:60,levelStage:4,kind:'turret',cooldown:0,charge:0}];
+ for(let i=0;i<65;i++)tickCombat(c,p,p,1/120);
+ assert.equal(c.shots.length,3);assert.ok(c.shots.every(s=>Math.abs(Math.hypot(s.vx,s.vy,s.vz)-26)<1e-6));assert.notEqual(c.shots[0].vz,c.shots[2].vz);assert.ok(c.sentries[0].cooldown<=1.15);
+});
