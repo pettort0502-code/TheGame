@@ -40,6 +40,13 @@ try{
  }
  await text(page,'ability-text',/^DRONE READY/);await page.mouse.down();await text(page,'ability-text',/^DRONE SWING/);await page.screenshot({path:'/tmp/skybound-drone.png'});await page.mouse.up();await home(page);
  assert.equal(await page.locator('#trial-panel, #trial-start, #menu-trial, #race-flash').count(),0);
+ // Full inventory requires a drop before the third item can be picked up.
+ await home(page);await page.keyboard.press('KeyG');await page.waitForSelector('#item-grapple:not(.owned)');
+ await page.keyboard.down('KeyS');try{await page.waitForSelector('#item-hammer.owned');}finally{await page.keyboard.up('KeyS');}
+ await page.mouse.click(720,450,{button:'right'});await page.waitForSelector('#item-hammer.equipped');
+ await page.evaluate(()=>{const c=document.querySelector('canvas');c.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true}));c.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));});
+ await text(page,'ability-text',/^HAMMER RECHARGING/);await page.screenshot({path:'/tmp/skybound-hammer.png'});
+ assert.match(await page.locator('#slots').textContent(),/2 \/ 2/);
  await page.keyboard.press('KeyR');await text(page,'ability-text',/^NO ITEM/);assert.equal(await page.locator('#item-grapple').evaluate(e=>e.classList.contains('owned')),false);await page.keyboard.press('Escape');
  const mobile=await browser.newPage({viewport:{width:390,height:844},hasTouch:true,isMobile:true});mobile.on('pageerror',e=>errors.push(e.message));await load(mobile);await mobile.locator('#play').tap();await collect(mobile,'grapple');await collect(mobile,'spear');
  assert.ok(await mobile.locator('#slide').isVisible());assert.ok(await mobile.locator('#switch-item').isVisible());await mobile.locator('#switch-item').tap();await mobile.waitForSelector('#item-spear.equipped');

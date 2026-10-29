@@ -5,7 +5,7 @@ export function assistedTarget(player,origin,direction,direct){
  if(direct&&canGrapple(player,direct))return direct;
  const cone=6*Math.PI/180;
  let best=null,bestScore=Infinity;
- const boxes=[...world,...droneRoutes.map(r=>({...droneAt(r.id,player.time),droneId:r.id}))];
+ const boxes=[...world,...droneRoutes.filter(r=>!player.deadDrones?.includes(r.id)).map(r=>({...droneAt(r.id,player.time),droneId:r.id}))];
  for(const box of boxes){
   if(Math.hypot(box.x-player.x,box.y-player.y,box.z-player.z)>20+Math.hypot(box.w,box.h,box.d)/2)continue;
   const centerDistance=(box.x-origin.x)*direction.x+(box.y-origin.y)*direction.y+(box.z-origin.z)*direction.z;

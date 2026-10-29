@@ -83,6 +83,7 @@ pad('highline-return',0,-78,0,1);
 export const itemPickups=[
  {id:'plaza-grapple',type:'grapple',x:-1.5,y:.95,z:5,label:'GRAPPLE GUN'},
  {id:'plaza-spear',type:'spear',x:1.5,y:.95,z:5,label:'LUNGE SPEAR'},
+ {id:'plaza-hammer',type:'hammer',x:0,y:.95,z:12,label:'SHOCKWAVE HAMMER'},
 ];
 
 // Outer districts triple the playable ground area while keeping the plaza familiar.
@@ -103,5 +104,8 @@ for(const [name,cx,cz] of [['North foundry',0,-112],['East reactor',112,0],['Sou
 // Launch routes connect the inner and outer districts.
 for(const [i,x,z,dx,dz] of [[0,0,-86,0,-1],[1,86,0,1,0],[2,0,86,0,1],[3,-86,0,-1,0]])pad(`outbound-${i}`,x,z,dx,dz);
 
-export const enemySpawns=[[0,-112],[112,0],[0,112],[-112,0],[108,-108],[-108,108],[65,-55],[-65,55]].map(([x,z],i)=>({id:`sentry-${i}`,x:x+18,y:1.6,z}));
+export const enemySpawns=[[0,-112],[112,0],[0,112],[-112,0],[108,-108],[-108,108],[65,-55],[-65,55],[45,45],[-45,-45],[85,85],[-85,-85],[120,70],[-120,-70],[70,-120],[-70,120]].map(([x,z],i)=>({id:`sentry-${i}`,x:x+18,y:1.6,z}));
 for(const e of enemySpawns)block(e.id,e.x,0,e.z,1.4,1.2,1.4,'#d36a8e','Sentry territory');
+
+export const enemyBases=world.filter(w=>enemySpawns.some(e=>e.id===w.id));
+export const groundSpawns=[[30,38],[-30,-38],[75,15],[-75,-15],[15,100],[-15,-100],[110,75],[-110,-75]].map(([x,z],i)=>({id:`walker-${i}`,x,y:.75,z}));

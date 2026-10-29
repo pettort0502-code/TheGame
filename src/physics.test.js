@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED,halfHeight,canStand,boostPads,itemPickups,cycleItem,hasEquipped,SPEAR_SPEED} from './physics.js';
+import {world,SPAWN,newPlayer,step,wallContact,canGrapple,constrainRope,GRAPPLE_RANGE,REEL_SPEED,halfHeight,canStand,boostPads,itemPickups,cycleItem,dropItem,hasEquipped,SPEAR_SPEED} from './physics.js';
 const dt=1/120,idle={x:0,z:0};
 function settled(){return {...newPlayer(),grounded:true};}
 test('sandbox remains open in all directions without a finish trigger',()=>{
@@ -204,4 +204,20 @@ test('tighter jump keeps similar height with shorter airtime and unchanged horiz
  step(p,{x:1,z:0,jump:true},dt);let peak=p.y,elapsed=dt;
  while(!p.grounded&&elapsed<2){step(p,idle,dt);peak=Math.max(peak,p.y);elapsed+=dt;}
  assert.ok(peak-.65>3.2&&peak-.65<3.5);assert.ok(elapsed>.95&&elapsed<1.05);assert.equal(p.vx,9);
+});
+
+test('two-slot inventory blocks hammer until an item is dropped and dropped gear can be recovered',()=>{
+ const hammer=itemPickups.find(i=>i.type==='hammer'),p={...newPlayer(),x:hammer.x,y:hammer.y,z:hammer.z,inventory:['grapple','spear'],equipped:'grapple',collectedPickups:['plaza-grapple','plaza-spear']};
+ step(p,idle,dt);assert.equal(p.inventory.includes('hammer'),false);
+ assert.equal(dropItem(p),'grapple');step(p,idle,dt);assert.deepEqual(p.inventory,['spear','hammer']);assert.equal(p.equipped,'spear');
+ const dropped=p.pickupPositions['plaza-grapple'];assert.ok(dropped);assert.equal(p.collectedPickups.includes('plaza-grapple'),false);
+ cycleItem(p);assert.equal(p.equipped,'hammer');dropItem(p);p.time+=1.1;step(p,idle,dt);assert.ok(p.inventory.includes('grapple'));assert.equal(p.inventory.length,2);
+});
+test('hammer slams from the air, emits one shockwave and bounces while preserving horizontal speed',()=>{
+ const p={...newPlayer(),x:-60,y:6,z:0,vx:12,inventory:['hammer'],equipped:'hammer'};
+ step(p,{...idle,spearPressed:true},dt);assert.ok(p.slamming&&p.vy< -30);
+ for(let i=0;i<60&&p.shockwaves===0;i++)step(p,idle,dt);
+ assert.equal(p.shockwaves,1);assert.ok(p.vy>15);assert.equal(p.vx,12);assert.equal(p.airJump,true);
+ step(p,{...idle,spearPressed:true},dt);assert.equal(p.shockwaves,1);assert.equal(p.slamming,false);
+ const ground={...newPlayer(),x:-60,y:.65,z:0,grounded:true,inventory:['hammer'],equipped:'hammer'};step(ground,{...idle,spearPressed:true},dt);assert.equal(ground.shockwaves,1);assert.ok(ground.vy>15);
 });

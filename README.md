@@ -18,7 +18,7 @@ Open `skybound-reel-swing.html` in Chrome or Edge and click **Click to play**. N
 - WASD / arrows: move relative to the camera
 - Mouse: look
 - Space: jump, double jump, or wall kick
-- **Walk into the glowing pickups ahead of the plaza:** collect the grapple gun on the left and spear on the right. You start empty-handed.
+- **Walk into the glowing pickups ahead of the plaza:** choose the grapple gun on the left, spear on the right, or hammer behind you. You start empty-handed and can carry two.
 - **Right click or E:** switch between collected items
 - **Left click or Q with spear equipped:** lunge in the aimed direction at 42m/s (1.4s cooldown; release and press again to reuse)
 - **Hold left click or Q with grapple equipped:** attach the hook to the surface under the crosshair within **20 metres**
@@ -37,7 +37,7 @@ Slides last up to 1.2 seconds, lower the physical collider, retain speed with li
 
 There are twenty directional boost pads. Each crossing triggers once and grants a short ground-speed boost; airborne momentum is retained. The map is approximately 312m wide, with three times the previous 180m map’s ground area.
 
-Both items have distinct visible first-person models. The spear thrusts forward during a lunge, and the grapple rope starts at the gun’s actual muzzle. Picked-up items disappear from the world. Returning home or falling keeps collected gear; Reset sandbox starts empty-handed and restores both pickups. Switching off the grapple detaches the rope and requires releasing the use button before the new item can fire.
+All three items have distinct visible first-person models. The spear thrusts forward during a lunge, and the grapple rope starts at the gun’s actual muzzle. Picked-up items disappear from the world. Returning home or falling keeps collected gear; Reset sandbox starts empty-handed and restores all three pickups. Switching off the grapple detaches the rope and requires releasing the use button before the new item can fire.
 
 First-person hands react to firing and double jumps, with an expanding jump ring. The camera stays upright. Running is 9m/s. Double jumps, wall jumps, and the open sandbox remain; sprint and dash are absent.
 
@@ -79,7 +79,7 @@ The world uses smooth charcoal and indigo surfaces with cyan, magenta, and viole
 
 ## Drones and movement effects
 
-Four moving drones provide grapple targets around the plaza, eastern sandbox, and swing forest. Aim at a glowing drone body with the grapple equipped; its anchor moves with it, and release retains your resulting velocity. Screen markers identify visible drones and light up when reachable. These are aerial grapple targets, not platforms to stand on. The 20m grapple range and item-pickup rules apply.
+Ten armed moving drones provide grapple targets around the plaza, eastern sandbox, and swing forest. Aim at a glowing drone body with the grapple equipped; its anchor moves with it, and release retains your resulting velocity. Screen markers identify visible drones and light up when reachable. These are aerial grapple targets, not platforms to stand on. The 20m grapple range and item-pickup rules apply.
 
 Landings create expanding neon rings, sparks, a subtle lower-screen impact flash, and a small hand dip scaled by impact speed. Fast movement adds cyan world trails and peripheral speed streaks, fading out below 14m/s. Effects use reusable pools and do not add movement penalties or camera shake.
 
@@ -90,6 +90,17 @@ Spear activation captures quick taps between physics updates and buffers clicks 
 
 ## Expanded sandbox and sentries
 
-Six outer districts add rooftops, swing beams, slide tunnels and launch routes across 97,200 square metres. Ten moving grapple drones cover the inner and outer districts. Eight stationary sentries in the outer districts and old outer edges fire straight neon projectiles at 18m/s within 38m, after a 0.65s windup, with two seconds between shots. Walls block targeting and shots. The plaza has a 25m safe radius. Three shield hits return you home with your inventory; hits grant one second of immunity, and shields recover after six seconds without damage, then every two seconds. Home/reset clears shots. Pause freezes combat.
+Six outer districts add rooftops, swing beams, slide tunnels and launch routes across 97,200 square metres. Ten moving grapple drones cover the inner and outer districts. Sixteen stationary sentries in the outer districts and old outer edges fire straight neon projectiles at 18m/s within 38m, after a 0.65s windup, with two seconds between shots. Walls block targeting and shots. The plaza has a 25m safe radius. Three shield hits return you home with your inventory; hits grant one second of immunity, and shields recover after six seconds without damage, then every two seconds. Home/reset clears shots. Pause freezes combat.
 
 Grapple aim assistance is always active, including while stationary, with a narrow 6° acquisition cone at every movement speed. Valid direct shots take priority. Assistance only selects visible real surfaces or drone bodies within the existing 20m range; it never rotates the camera. A purple reticle outline and ASSIST LOCK status identify assisted targets.
+
+
+## Combat and two-item loadouts
+
+Lunge through enemies with the spear to destroy them. Collision uses a swept strike so fast attacks do not skip targets. Turrets, drones and ground walkers are all destructible; destroyed turret bases stop blocking movement and grappling. Destroyed drones stop shooting, disappear from aim assist and release any attached rope. Destruction creates neon bursts and increments the kill counter. Home or reset respawns enemies and clears kills.
+
+All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and eight ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The safe plaza remains protected.
+
+The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams down from the air; touching down creates a 7m shockwave that destroys enemies and bounces you upward. Using it while grounded immediately blasts and bounces. It preserves horizontal momentum, refreshes the air jump, and has a 1.8s cooldown. Its held model swings during use.
+
+Only two items fit in your inventory. **G** or the **Drop item** button drops the equipped item at the ground below you, frees one slot, and equips your other item. Dropped gear is visible and can be collected again after one second; a full inventory cannot take another pickup. Right-click/E switches your two carried items. Reset restores the original pickups; Home/falling keeps your loadout and dropped-item locations.

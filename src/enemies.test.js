@@ -23,5 +23,25 @@ test('shots stop on walls, expire, and enemy bases are solid outside the plaza',
  const c=newCombat();c.sentries=[];const p={...newPlayer(),x:100,y:3,z:60};
  c.shots=[{x:0,y:.2,z:-1,vx:0,vy:-18,vz:0,life:2,owner:'test'},{x:120,y:5,z:60,vx:0,vy:0,vz:0,life:.001,owner:'test'}];
  tickCombat(c,p,p,.1);assert.equal(c.shots.length,0);
- assert.equal(enemySpawns.length,8);assert.ok(enemySpawns.every(e=>Math.hypot(e.x,e.z)>40&&world.some(w=>w.id===e.id)));
+ assert.equal(enemySpawns.length,16);assert.ok(enemySpawns.every(e=>Math.hypot(e.x,e.z)>40&&world.some(w=>w.id===e.id)));
+});
+
+test('spear sweeps destroy turrets, remove solid bases, and reset restores them',()=>{
+ const c=newCombat(),e=c.sentries.find(e=>e.kind==='turret');c.sentries=[e];
+ const p={...newPlayer(),x:e.x+2,y:e.y,z:e.z,lungeTime:.2,spearDirection:{x:1,y:0,z:0}};
+ tickCombat(c,p,{x:e.x-3,y:e.y,z:e.z},dt);assert.equal(e.dead,true);assert.equal(c.kills,1);assert.equal(world.some(w=>w.id===e.id),false);
+ tickCombat(c,p,p,dt);assert.equal(c.kills,1);newCombat();assert.ok(world.some(w=>w.id===e.id));
+});
+test('hammer blast destroys nearby enemies, respects cover, and destroyed drones release grapple',()=>{
+ const c=newCombat(),drone=c.sentries.find(e=>e.kind==='drone');c.sentries=[drone];
+ const p={...newPlayer(),x:drone.x,y:drone.y-2,z:drone.z,shockwaves:1,shockwave:{x:drone.x,y:drone.y-2,z:drone.z},grapple:{droneId:drone.id}};
+ tickCombat(c,p,p,dt);assert.equal(drone.dead,true);assert.ok(p.deadDrones.includes(drone.id));assert.equal(p.grapple,null);
+ const blocked=newCombat(),e=blocked.sentries.find(e=>e.kind==='turret');blocked.sentries=[e];const q={...newPlayer(),x:e.x+4,y:e.y,z:e.z,shockwaves:1,shockwave:{x:e.x+4,y:e.y,z:e.z}};
+ world.push({id:'blast-cover',x:e.x+2,y:2,z:e.z,w:.5,h:4,d:5});try{tickCombat(blocked,q,q,dt);assert.equal(e.dead,false);}finally{world.pop();}
+});
+test('ground enemies move and armed drones fire outside the safe plaza',()=>{
+ const c=newCombat(),walker=c.sentries.find(e=>e.kind==='walker'),drone=c.sentries.find(e=>e.kind==='drone'&&e.id==='outer-drone-0');c.sentries=[walker,drone];
+ const p={...newPlayer(),x:drone.x,y:drone.y,z:drone.z-8};drone.cooldown=0;const old={x:walker.x,z:walker.z};let fired=false;
+ for(let i=0;i<100;i++){p.time+=dt;tickCombat(c,p,p,dt);fired||=c.shots.some(s=>s.owner===drone.id);}
+ assert.ok(Math.hypot(walker.x-old.x,walker.z-old.z)>.1);assert.ok(fired);
 });
