@@ -81,3 +81,8 @@ test('cargo routes clear static buildings throughout a full circuit',()=>{
   assert.equal(hit,undefined,`${route.id} intersected ${hit?.id}`);
  }
 });
+
+test('throwing and recalling the spear cannot bypass its airborne lunge limit',()=>{
+ const c=newCombat();c.sentries=[];const p={...newPlayer(),x:-60,y:20,z:0,spearUses:0,inventory:['spear','grapple'],equipped:'spear',collectedPickups:['plaza-spear','plaza-grapple']};
+ dropItem(p,{x:1,y:0,z:0});assert.equal(p.spearUses,0);assert.equal(recallItems(p),1);tickCombat(c,p,p,1/120);assert.ok(p.inventory.includes('spear'));assert.equal(p.spearUses,0);
+});

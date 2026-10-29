@@ -230,3 +230,24 @@ test('new vertical districts provide climbable ledges up to sixty metres within 
   const crown=world.find(w=>w.id===`sky-${i}-crown-hook`);assert.ok(crown.y>=59);
  }
 });
+
+test('spear allows two airborne lunges, rejects a third and restores both charges on landing',()=>{
+ const p={...newPlayer(),x:-60,y:110,z:0,inventory:['spear','grapple'],equipped:'spear'};
+ const use={...idle,use:true,facingX:1,facingZ:0};
+ step(p,use,dt);assert.equal(p.spearUses,1);assert.equal(p.lunges,1);
+ step(p,idle,dt);step(p,use,dt);assert.equal(p.spearUses,1);assert.equal(p.lunges,1);
+ for(let i=0;i<180;i++)step(p,idle,dt);
+ step(p,use,dt);assert.equal(p.spearUses,0);assert.equal(p.lunges,2);
+ for(let i=0;i<180;i++)step(p,idle,dt);
+ step(p,use,dt);assert.equal(p.lunges,2);assert.equal(p.spearUses,0);
+ cycleItem(p);cycleItem(p);assert.equal(p.spearUses,0);
+ Object.assign(p,{x:-60,y:2,z:0,vx:0,vy:-10,vz:0});
+ for(let i=0;i<60&&!p.grounded;i++)step(p,idle,dt);
+ assert.equal(p.grounded,true);assert.equal(p.spearUses,2);
+ step(p,use,dt);assert.equal(p.lunges,3);assert.equal(p.spearUses,1);
+});
+test('wall kicks and double jumps do not restore spent spear lunges',()=>{
+ const p={...newPlayer(),x:12.68,y:4,z:-7,spearUses:0,inventory:['spear'],equipped:'spear'};
+ step(p,{...idle,jump:true},dt);assert.equal(p.wallJumps,1);assert.equal(p.spearUses,0);
+ Object.assign(p,{x:-60,y:10,z:0,controlLock:0});step(p,{...idle,jump:true},dt);assert.equal(p.doubleJumps,1);assert.equal(p.spearUses,0);
+});

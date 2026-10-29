@@ -6,7 +6,7 @@ async function load(page){if(process.env.GAME_FILE)await page.setContent(readFil
 try{
  const errors=[],page=await browser.newPage({viewport:{width:1440,height:900}});page.on('pageerror',e=>errors.push(e.message));await load(page);
  assert.match(await page.locator('.eyebrow').textContent(),/Blackout Spire/);assert.equal(await page.locator('#health').count(),0);await page.locator('#play').click();await page.waitForFunction(()=>Boolean(document.pointerLockElement));
- assert.match(await page.locator('#mission-title').textContent(),/1 \/ 8/);assert.match(await page.locator('#mission-goal').textContent(),/4 relay guards/);assert.match(await page.locator('#run-status').textContent(),/CHECKPOINT 1 \/ 9/);
+ assert.match(await page.locator('#mission-title').textContent(),/1 \/ 8/);assert.match(await page.locator('#mission-goal').textContent(),/5 relay guards/);assert.match(await page.locator('#run-status').textContent(),/CHECKPOINT 1 \/ 9/);
  for(const [type,key] of [['grapple','KeyA'],['spear','KeyD']]){
   await page.keyboard.down('KeyW');await page.keyboard.down(key);try{await page.waitForSelector(`#item-${type}.owned`);}finally{await page.keyboard.up('KeyW');await page.keyboard.up(key);}await page.evaluate(()=>document.getElementById('home').click());
  }

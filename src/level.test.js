@@ -30,8 +30,8 @@ test('single-hit or fall retries the checkpoint without a shield pool, and compl
 });
 test('escape decks warn then collapse and retries restore them and the escape countdown',()=>{
  const {run,p}=setup();run.stage=7;let c=newCombat();checkpointSpawn(run,p,c);const deck=world.find(w=>w.collapsing);Object.assign(p,{x:deck.x,y:deck.y+deck.h/2+.65,z:deck.z,grounded:true});
- tickRun(run,p,c,.5);assert.equal(deck.destroyed,false);tickRun(run,p,c,.8);assert.equal(deck.destroyed,true);assert.equal(world.includes(deck),false);
- run.escapeRemaining=.1;assert.equal(tickRun(run,p,c,.2),'death');c=newCombat();checkpointSpawn(run,p,c,true);assert.equal(deck.destroyed,false);assert.ok(world.includes(deck));assert.equal(run.escapeRemaining,75);
+ tickRun(run,p,c,.2);assert.equal(deck.destroyed,false);tickRun(run,p,c,.3);assert.equal(deck.destroyed,true);assert.equal(world.includes(deck),false);
+ run.escapeRemaining=.1;assert.equal(tickRun(run,p,c,.2),'death');c=newCombat();checkpointSpawn(run,p,c,true);assert.equal(deck.destroyed,false);assert.ok(world.includes(deck));assert.equal(run.escapeRemaining,60);
 });
 
 test('a fall retry retains the full three-second spawn grace on the next combat update',()=>{
@@ -43,9 +43,9 @@ test('navigation catches up after a grapple shortcut without requiring every rou
 });
 
 test('hard route has tight decks, reachable anchors, stronger encounters and a shorter escape',()=>{
- assert.equal(HARD_RULES.escapeSeconds,75);assert.equal(HARD_RULES.collapseSeconds,.65);
- assert.ok(requiredByStage.slice(0,7).reduce((n,ids)=>n+ids.length,0)>=40);
- const decks=levelWorld.filter(w=>/^level-[1-6]-deck-/.test(w.id));assert.ok(decks.filter(w=>w.w<=5).length>decks.length/2);
+ assert.equal(HARD_RULES.escapeSeconds,60);assert.equal(HARD_RULES.collapseSeconds,.45);
+ assert.ok(requiredByStage.slice(0,7).reduce((n,ids)=>n+ids.length,0)>=50);
+ const decks=levelWorld.filter(w=>/^level-[1-6]-deck-/.test(w.id));assert.ok(decks.filter(w=>w.w<=3.8).length>decks.length/2);assert.equal(levelLasers.length,13);
  for(const nodes of routeNodes)for(let i=1;i<nodes.length;i++){const a=nodes[i-1],b=nodes[i],hook=levelWorld.find(w=>w.id===b.hookId);if(hook)assert.ok(Math.hypot(hook.x-a.x,hook.y-a.y,hook.z-a.z)<20);}
 });
 test('laser barriers telegraph, cycle off, catch a fast crossing and can be jumped',()=>{

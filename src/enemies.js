@@ -70,7 +70,7 @@ export function tickCombat(c,p,before,dt){
   if(e.kind==='walker'){
    const chase=!safe&&Math.hypot(p.x-e.x,p.z-e.z)<24;
    const tx=chase?p.x:e.homeX+Math.sin(p.time*.5)*8,tz=chase?p.z:e.homeZ+Math.cos(p.time*.5)*8;
-   const hooked=p.grapple?.enemyId===e.id&&!e.armored,px=hooked?p.x:tx,pz=hooked?p.z:tz,angle=Math.atan2(px-e.x,pz-e.z),rate=hooked?(Math.hypot(p.x-e.x,p.z-e.z)>2?12:0):p.campaign&&chase?4.5:3,vx=Math.sin(angle)*rate*dt,vz=Math.cos(angle)*rate*dt;
+   const hooked=p.grapple?.enemyId===e.id&&!e.armored,px=hooked?p.x:tx,pz=hooked?p.z:tz,angle=Math.atan2(px-e.x,pz-e.z),rate=hooked?(Math.hypot(p.x-e.x,p.z-e.z)>2?12:0):p.campaign&&chase?5.8:3,vx=Math.sin(angle)*rate*dt,vz=Math.cos(angle)*rate*dt;
    const floor=(e.homeY??.75)-.75;
    const free=(x,z)=>!world.some(w=>w.id!=='ground'&&Math.abs(x-w.x)<w.w/2+.55&&Math.abs(z-w.z)<w.d/2+.55&&w.y+w.h/2>floor+.1&&w.y-w.h/2<floor+1.5)&&(!e.requireFloor||world.some(w=>Math.abs(x-w.x)<w.w/2-.5&&Math.abs(z-w.z)<w.d/2-.5&&Math.abs(w.y+w.h/2-floor)<.15));
    if(free(e.x+vx,e.z))e.x+=vx;if(free(e.x,e.z+vz))e.z+=vz;e.heading=angle;
@@ -85,21 +85,21 @@ export function tickCombat(c,p,before,dt){
   }
   if(e.kind==='walker'&&!safe&&Math.hypot(e.x-p.x,e.z-p.z)<.9&&Math.abs(e.y-p.y)<1.3&&c.invulnerable===0){c.hits++;c.events.push({type:'hurt',x:p.x,y:p.y,z:p.z});c.flash=.28;c.invulnerable=1;}
   e.cooldown=Math.max(0,e.cooldown-dt);
-  const distance=Math.hypot(p.x-e.x,p.y-e.y,p.z-e.z),clear=!safe&&distance<(p.campaign?44:38)&&!blocked(e,p,e.id);
+  const distance=Math.hypot(p.x-e.x,p.y-e.y,p.z-e.z),clear=!safe&&distance<(p.campaign?48:38)&&!blocked(e,p,e.id);
   if(!clear){e.charge=0;continue;}
   if(e.cooldown>0)continue;
   if(e.charge===0)c.events.push({type:'warning',x:e.x,y:e.y,z:e.z});
   e.charge+=dt;
-  const windup=p.campaign?(e.levelStage===0?.6:.5):.65;
+  const windup=p.campaign?(e.levelStage===0?.55:.4):.65;
   e.windup=windup;
   if(e.charge<windup)continue;
   // Briefly lead movement, then fire a dodgeable straight shot; no homing.
-  const shotSpeed=p.campaign?(e.levelStage===0?22:26):SHOT_SPEED;
+  const shotSpeed=p.campaign?(e.levelStage===0?25:30):SHOT_SPEED;
   const lead=Math.min(.3,distance/shotSpeed*(p.campaign?.35:.2)),dx=p.x+p.vx*lead-e.x,dy=p.y+p.vy*lead-e.y,dz=p.z+p.vz*lead-e.z,d=Math.hypot(dx,dy,dz)||1;
-  const fan=p.campaign&&e.levelStage>=3&&e.kind!=='walker'?[-.075,0,.075]:[0];
+  const fan=p.campaign&&e.kind!=='walker'?(e.armored&&e.levelStage>=3?[-.13,-.065,0,.065,.13]:[-.085,0,.085]):[0];
   for(const angle of fan)if(c.shots.length<64){const cs=Math.cos(angle),sn=Math.sin(angle);c.shots.push({x:e.x,y:e.y,z:e.z,vx:(dx*cs-dz*sn)/d*shotSpeed,vy:dy/d*shotSpeed,vz:(dx*sn+dz*cs)/d*shotSpeed,life:3,owner:e.id});}
   c.events.push({type:'shot',x:e.x,y:e.y,z:e.z});
-  e.charge=0;e.cooldown=p.campaign?(e.kind==='walker'?1.45:1.15):2;
+  e.charge=0;e.cooldown=p.campaign?(e.kind==='walker'?1.1:.85):2;
  }
  if(pulse&&p.shockwave)for(const w of [...world])if(w.breakable&&Math.hypot(w.x-p.shockwave.x,w.y-p.shockwave.y,w.z-p.shockwave.z)<=(p.shockwave.radius||7)&&!blocked({...p.shockwave,y:p.shockwave.y+.4},w,w.id))shatter(w,p);
  tickThrown(c,p,dt);

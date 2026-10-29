@@ -124,6 +124,7 @@ export function step(player,input,dt) {
   player.releaseDirection={x:input.facingX??0,y:input.facingY??0,z:input.facingZ??-1};
   if(player.grapple&&(player.grapple.droneId||player.grapple.enemyId||player.grapple.cargoId))player.grapple=resolveAnchor(player.grapple,player.time,player.enemyTargets);
   const wasGrounded=player.grounded;
+  if(player.grounded)player.spearUses=2;
 
   collectItems(player);
   const use=Boolean(input.use??input.grapple);
@@ -133,7 +134,7 @@ export function step(player,input,dt) {
   if(hasEquipped(player,'hammer')&&(pressed||input.spearPressed)&&!player.requireRelease)player.hammerBuffer=.12;
   if(!hasEquipped(player,'hammer'))player.hammerBuffer=0;
   player.spearBuffer=Math.max(0,player.spearBuffer-dt);
-  if(hasEquipped(player,'spear')&&(pressed||input.spearPressed)&&!player.requireRelease)player.spearBuffer=.12;
+  if(hasEquipped(player,'spear')&&player.spearUses>0&&(pressed||input.spearPressed)&&!player.requireRelease)player.spearBuffer=.12;
   if(!hasEquipped(player,'spear'))player.spearBuffer=0;
   player.spearCooldown=Math.max(0,player.spearCooldown-dt);player.lungeTime=Math.max(0,player.lungeTime-dt);
   if(hasEquipped(player,'grapple')&&pressed&&canGrapple(player,input.target)){
@@ -194,12 +195,12 @@ export function step(player,input,dt) {
     player.vx+=(ix-dot*nx)*18*dt;player.vy-=dot*ny*18*dt;player.vz+=(iz-dot*nz)*18*dt;
     const speed=Math.hypot(player.vx,player.vy,player.vz);if(speed>40){player.vx*=40/speed;player.vy*=40/speed;player.vz*=40/speed;}
   }
-  if(hasEquipped(player,'spear')&&player.spearBuffer>0&&player.spearCooldown===0){
+  if(hasEquipped(player,'spear')&&player.spearUses>0&&player.spearBuffer>0&&player.spearCooldown===0){
     const fx=input.facingX??0,fy=Math.max(-.25,Math.min(.65,input.facingY??0)),fz=input.facingZ??-1,d=Math.hypot(fx,fy,fz)||1;
     player.spearPower=Math.min(2.5,1+Math.max(0,Math.hypot(player.vx,player.vz)-18)/18);
     const speed=Math.max(SPEAR_SPEED,Math.hypot(player.vx,player.vy,player.vz));
     player.vx=fx/d*speed;player.vz=fz/d*speed;player.vy=Math.max(fy/d*speed,2.5);
-    player.spearBuffer=0;
+    player.spearBuffer=0;player.spearUses--;
     player.lungeTime=.24;player.spearCooldown=SPEAR_COOLDOWN;player.slideTime=0;player.lunges++;player.spearDirection={x:fx/d,y:fy/d,z:fz/d};
   }
   if(hasEquipped(player,'hammer')&&player.hammerBuffer>0&&player.hammerCooldown===0){
@@ -242,7 +243,7 @@ export function step(player,input,dt) {
   constrainRope(player);
   const overlapping=world.filter(w=>Math.abs(player.x-w.x)<w.w/2+RADIUS&&Math.abs(player.z-w.z)<w.d/2+RADIUS);
   const landings=overlapping.filter(w=>player.vy<=0&&oldY-halfHeight(player)>=w.y+w.h/2-.015&&player.y-halfHeight(player)<=w.y+w.h/2).sort((a,b)=>(b.y+b.h/2)-(a.y+a.h/2));
-  if(landings.length){const w=landings[0];if(!wasGrounded&&player.vy< -2){player.landings++;player.landingImpact=-player.vy;player.landingX=player.x;player.landingY=w.y+w.h/2+.035;player.landingZ=player.z;}player.y=w.y+w.h/2+halfHeight(player);player.vy=0;player.grounded=true;player.riding=w.cargoId||null;}
+  if(landings.length){const w=landings[0];if(!wasGrounded&&player.vy< -2){player.landings++;player.landingImpact=-player.vy;player.landingX=player.x;player.landingY=w.y+w.h/2+.035;player.landingZ=player.z;}player.y=w.y+w.h/2+halfHeight(player);player.vy=0;player.grounded=true;player.spearUses=2;player.riding=w.cargoId||null;}
   if(player.vy>0){
     const ceilings=overlapping.filter(w=>oldY+halfHeight(player)<=w.y-w.h/2+.015&&player.y+halfHeight(player)>=w.y-w.h/2).sort((a,b)=>(a.y-a.h/2)-(b.y-b.h/2));
     if(ceilings.length){player.y=ceilings[0].y-ceilings[0].h/2-halfHeight(player);player.vy=0;}
@@ -262,7 +263,7 @@ export function step(player,input,dt) {
     player.vx=pad.dx/d*speed;player.vz=pad.dz/d*speed;player.boostTime=1.3;player.boosts++;
   }
   player.padId=pad?.id||null;
-  if(player.y<(player.killHeight??-16)){Object.assign(player,player.respawnPoint||SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.slamming=false;player.falls++;}
+  if(player.y<(player.killHeight??-16)){Object.assign(player,player.respawnPoint||SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.spearUses=2;player.slamming=false;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,riding:null,enemyTargets:[],recoverableItems:[],breakEvents:[],grinding:false,grindTime:0,grappleCharge:0,spearPower:1,slingshots:0,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,lungeTime:0,lunges:0};}
+export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,riding:null,enemyTargets:[],recoverableItems:[],breakEvents:[],grinding:false,grindTime:0,grappleCharge:0,spearPower:1,slingshots:0,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,spearUses:2,lungeTime:0,lunges:0};}
