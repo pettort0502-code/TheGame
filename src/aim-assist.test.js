@@ -4,11 +4,15 @@ import {assistedTarget} from './aim-assist.js';
 import {newPlayer,canGrapple} from './physics.js';
 import {world} from './world.js';
 import {droneAt} from './drones.js';
-test('high-speed assist acquires nearby drone faces, with no slow-speed or wide-angle snapping',()=>{
+test('assist acquires nearby drone faces at every speed, without wide-angle snapping',()=>{
  const d=droneAt('plaza-drone',0),p={...newPlayer(),x:d.x,y:d.y,z:d.z-12,vx:30},origin={x:p.x,y:p.y,z:p.z};
  const direction={x:Math.sin(.035),y:0,z:Math.cos(.035)};
  const a=assistedTarget(p,origin,direction,null);assert.ok(a?.assisted);assert.equal(a.droneId,d.id);assert.ok(canGrapple(p,a));
- assert.equal(assistedTarget({...p,vx:9},origin,direction,null),null);
+ for(const speed of [0,9,16,42])for(const distance of [3,12,19.9]){
+  const q={...p,vx:speed,z:d.z-distance};
+  const target=assistedTarget(q,q,direction,null);
+  assert.equal(target?.droneId,d.id,`speed ${speed}, distance ${distance}`);assert.ok(canGrapple(q,target));
+ }
  assert.equal(assistedTarget(p,origin,{x:1,y:0,z:0},null),null);
 });
 test('assist respects range and occlusion and gives valid direct shots priority',()=>{
