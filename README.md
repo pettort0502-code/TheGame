@@ -88,3 +88,5 @@ Medals: gold at 25 seconds or faster, silver at 40, bronze at 65. Completed time
 Landings create expanding neon rings, sparks, a subtle lower-screen impact flash, and a small hand dip scaled by impact speed. Fast movement adds cyan world trails and peripheral speed streaks, fading out below 14m/s. Effects use reusable pools and do not add movement penalties or camera shake.
 
 `src/trial.js` handles the race, `src/drones.js` supplies deterministic moving anchors, `src/course-visuals.js` draws the course, and `src/movement-effects.js` handles the effects. Tests include a complete physical run through every gate using both course drones.
+
+Spear activation captures quick taps between physics updates and buffers clicks in the final 0.12s of cooldown. Holding use does not repeat lunges; switch, pause, home, and reset clear pending clicks. Gravity is 28m/s² with jump impulses adjusted to retain jump height while shortening airtime; horizontal air momentum is unchanged.

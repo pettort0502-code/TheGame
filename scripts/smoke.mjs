@@ -21,7 +21,7 @@ try{
  await page.mouse.down();await text(page,'hooks',/^1$/);await text(page,'ability-text',/^SWINGING/);await page.screenshot({path:'/tmp/skybound-hook.png'});
  // Switching off a held grapple detaches it and never activates the new weapon.
  await page.mouse.click(720,450,{button:'right'});await page.waitForSelector('#item-spear.equipped');await text(page,'ability-text',/^SPEAR READY/);await page.mouse.up();
- await page.mouse.down();await page.waitForFunction(()=>Number(document.getElementById('speed').textContent)>35);await page.screenshot({path:'/tmp/skybound-spear.png'});await page.mouse.up();
+ await page.evaluate(()=>{const c=document.querySelector('canvas');c.dispatchEvent(new MouseEvent('mousedown',{button:0,bubbles:true}));c.dispatchEvent(new MouseEvent('mouseup',{button:0,bubbles:true}));});await page.waitForFunction(()=>Number(document.getElementById('speed').textContent)>35);await page.screenshot({path:'/tmp/skybound-spear.png'});await page.mouse.up();
  assert.ok(await page.evaluate(()=>document.pointerLockElement?.tagName==='CANVAS'));
  await home(page);await page.mouse.click(720,450,{button:'right'});await page.waitForSelector('#item-grapple.equipped');
  await page.keyboard.down('KeyQ');await text(page,'hooks',/^2$/);await text(page,'ability-text',/^SWINGING/);await page.keyboard.up('KeyQ');await text(page,'ability-text',/^(?!SWINGING)/);await home(page);

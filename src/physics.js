@@ -55,11 +55,12 @@ export function constrainRope(p){
  p.vx+=avx;p.vy+=avy;p.vz+=avz;
 }
 export const SPEAR_SPEED=42, SPEAR_COOLDOWN=1.4;
+export const GRAVITY=28, JUMP_SCALE=Math.sqrt(GRAVITY/23);
 export function hasEquipped(p,type){return p.equipped===type&&p.inventory.includes(type);}
 export function cycleItem(p){
  if(p.inventory.length<2)return p.equipped;
  const index=p.inventory.indexOf(p.equipped);p.equipped=p.inventory[(index+1)%p.inventory.length];
- p.grapple=null;p.ropeLength=0;p.requireRelease=p.useHeld;return p.equipped;
+ p.grapple=null;p.ropeLength=0;p.spearBuffer=0;p.requireRelease=p.useHeld;return p.equipped;
 }
 function collectItems(p){
  for(const item of itemPickups){
@@ -78,6 +79,9 @@ export function step(player,input,dt) {
   const use=Boolean(input.use??input.grapple);
   if(!use)player.requireRelease=false;
   const pressed=use&&!player.useHeld&&!player.requireRelease;
+  player.spearBuffer=Math.max(0,player.spearBuffer-dt);
+  if(hasEquipped(player,'spear')&&(pressed||input.spearPressed)&&!player.requireRelease)player.spearBuffer=.12;
+  if(!hasEquipped(player,'spear'))player.spearBuffer=0;
   player.spearCooldown=Math.max(0,player.spearCooldown-dt);player.lungeTime=Math.max(0,player.lungeTime-dt);
   if(hasEquipped(player,'grapple')&&pressed&&canGrapple(player,input.target)){
     player.grapple={...resolveAnchor(input.target,player.time)};player.ropeLength=Math.hypot(player.grapple.x-player.x,player.grapple.y-player.y,player.grapple.z-player.z);player.hooks++;
@@ -125,9 +129,9 @@ export function step(player,input,dt) {
   player.jumpBuffer=input.jump?.14:Math.max(0,player.jumpBuffer-dt);player.coyoteTime=player.grounded?.10:Math.max(0,player.coyoteTime-dt);player.wallCooldown=Math.max(0,player.wallCooldown-dt);
   if(player.grounded)player.airJump=true;
   if(player.jumpBuffer>0){
-    if(player.coyoteTime>0){player.slideTime=0;player.vy=12.5;player.grounded=false;player.jumpBuffer=0;player.coyoteTime=0;}
-    else if(contact&&player.wallCooldown===0){player.vy=13;player.vx=contact.nx*10;player.vz=contact.nz*10;player.controlLock=.20;player.wallCooldown=.2;player.jumpBuffer=0;player.wallJumps++;player.airJump=true;}
-    else if(input.jump&&player.airJump&&!contact){player.vy=11.5;player.airJump=false;player.jumpBuffer=0;player.doubleJumps++;}
+    if(player.coyoteTime>0){player.slideTime=0;player.vy=12.5*JUMP_SCALE;player.grounded=false;player.jumpBuffer=0;player.coyoteTime=0;}
+    else if(contact&&player.wallCooldown===0){player.vy=13*JUMP_SCALE;player.vx=contact.nx*10;player.vz=contact.nz*10;player.controlLock=.20;player.wallCooldown=.2;player.jumpBuffer=0;player.wallJumps++;player.airJump=true;}
+    else if(input.jump&&player.airJump&&!contact){player.vy=11.5*JUMP_SCALE;player.airJump=false;player.jumpBuffer=0;player.doubleJumps++;}
   }
   if(player.grapple&&moving&&!player.grounded){
     const a=player.grapple,dx=player.x-a.x,dy=player.y-a.y,dz=player.z-a.z,d=Math.hypot(dx,dy,dz)||1;
@@ -135,10 +139,11 @@ export function step(player,input,dt) {
     player.vx+=(ix-dot*nx)*18*dt;player.vy-=dot*ny*18*dt;player.vz+=(iz-dot*nz)*18*dt;
     const speed=Math.hypot(player.vx,player.vy,player.vz);if(speed>40){player.vx*=40/speed;player.vy*=40/speed;player.vz*=40/speed;}
   }
-  if(hasEquipped(player,'spear')&&pressed&&player.spearCooldown===0){
+  if(hasEquipped(player,'spear')&&player.spearBuffer>0&&player.spearCooldown===0){
     const fx=input.facingX??0,fy=Math.max(-.25,Math.min(.65,input.facingY??0)),fz=input.facingZ??-1,d=Math.hypot(fx,fy,fz)||1;
     const speed=Math.max(SPEAR_SPEED,Math.hypot(player.vx,player.vy,player.vz));
     player.vx=fx/d*speed;player.vz=fz/d*speed;player.vy=Math.max(fy/d*speed,2.5);
+    player.spearBuffer=0;
     player.lungeTime=.24;player.spearCooldown=SPEAR_COOLDOWN;player.slideTime=0;player.lunges++;
   }
   player.reelSpeed=0;
@@ -151,7 +156,7 @@ export function step(player,input,dt) {
     if(d>MIN_ROPE_LENGTH&&closing<REEL_SPEED){const pull=Math.min(REEL_SPEED-closing,36*dt);player.vx+=dx/d*pull;player.vy+=dy/d*pull;player.vz+=dz/d*pull;}
   }
   const oldY=player.y;
-  player.vy-=23*dt;
+  player.vy-=GRAVITY*dt;
   if(contact&&!player.grounded&&player.vy< -3)player.vy=-3;
   const substeps=Math.max(1,Math.ceil(Math.hypot(player.vx,player.vz)*dt/.18));
   for(let i=0;i<substeps;i++){
@@ -185,7 +190,7 @@ export function step(player,input,dt) {
     player.vx=pad.dx/d*speed;player.vz=pad.dz/d*speed;player.boostTime=1.3;player.boosts++;
   }
   player.padId=pad?.id||null;
-  if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.falls++;}
+  if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,lungeTime:0,lunges:0};}
+export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,lungeTime:0,lunges:0};}

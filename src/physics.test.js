@@ -182,3 +182,26 @@ test('landing events report an impact once on touchdown, with stronger effects f
  assert.equal(p.landings,1);assert.ok(p.landingImpact>10);assert.equal(p.landingY,.035);
  for(let i=0;i<120;i++)step(p,idle,dt);assert.equal(p.landings,1);
 });
+
+test('a spear click captured between simulation ticks still fires exactly once',()=>{
+ const p={...newPlayer(),x:-60,y:8,z:0,inventory:['spear'],equipped:'spear'};
+ step(p,{...idle,use:false,spearPressed:true,facingX:1,facingZ:0},dt);
+ assert.equal(p.lunges,1);assert.equal(p.vx,SPEAR_SPEED);
+ for(let i=0;i<200;i++)step(p,idle,dt);
+ assert.equal(p.lunges,1);
+});
+test('spear buffers a near-ready press but does not queue early cooldown clicks or fire after switching',()=>{
+ const make=()=>({...newPlayer(),x:-60,y:8,z:0,inventory:['spear','grapple'],equipped:'spear',spearCooldown:.08});
+ const p=make();step(p,{...idle,spearPressed:true},dt);
+ for(let i=0;i<12;i++)step(p,idle,dt);assert.equal(p.lunges,1);
+ const q=make();q.spearCooldown=.5;step(q,{...idle,spearPressed:true},dt);
+ for(let i=0;i<70;i++)step(q,idle,dt);assert.equal(q.lunges,0);
+ const r=make();step(r,{...idle,spearPressed:true},dt);cycleItem(r);
+ for(let i=0;i<20;i++)step(r,idle,dt);assert.equal(r.lunges,0);
+});
+test('tighter jump keeps similar height with shorter airtime and unchanged horizontal momentum',()=>{
+ const p={...newPlayer(),x:-60,z:0,y:.65,grounded:true,vx:9};
+ step(p,{x:1,z:0,jump:true},dt);let peak=p.y,elapsed=dt;
+ while(!p.grounded&&elapsed<2){step(p,idle,dt);peak=Math.max(peak,p.y);elapsed+=dt;}
+ assert.ok(peak-.65>3.2&&peak-.65<3.5);assert.ok(elapsed>.95&&elapsed<1.05);assert.equal(p.vx,9);
+});

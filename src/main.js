@@ -108,7 +108,9 @@ const aimRay=new THREE.Raycaster();
 const coarse=matchMedia('(pointer:coarse)').matches;
 function notice(text){$('notice').textContent=text;$('notice').style.opacity=1;clearTimeout(noticeTimeout);noticeTimeout=setTimeout(()=>$('notice').style.opacity=0,2200);}
 function aimPoint(){syncDrones();aimRay.setFromCamera(new THREE.Vector2(0,0),camera);const hit=aimRay.intersectObjects([...surfaces,...droneMeshes.map(d=>d.body)],false)[0];if(!hit)return null;const p=hit.point.clone().addScaledVector(hit.face.normal,.04);if(hit.object.userData.droneId){const d=droneAt(hit.object.userData.droneId,player.time);return {x:p.x,y:p.y,z:p.z,droneId:d.id,offset:{x:p.x-d.x,y:p.y-d.y,z:p.z-d.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}return {x:p.x,y:p.y,z:p.z,surfaceId:hit.object.userData.surface.id,nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}
+let spearQueued=false;
 function shoot(){
+ if(hasEquipped(player,'spear')&&!player.requireRelease)spearQueued=true;
  updateCamera(0);shotTarget=aimPoint();
  if(!player.equipped){notice('Collect an item: grapple on the left, spear on the right.');return;}
  if(hasEquipped(player,'grapple')&&!canGrapple(player,shotTarget))notice('Aim at a clear surface within 20 metres.');
@@ -116,18 +118,18 @@ function shoot(){
 function switchEquipment(){
  if(paused)return;
  if(player.inventory.length<2){notice(player.inventory.length?'Find the other pickup to switch items.':'Walk into the glowing items beside the plaza.');return;}
- const name=cycleItem(player);shotTarget=null;notice(name==='grapple'?'Grapple gun equipped':'Lunge spear equipped');
+ spearQueued=false;const name=cycleItem(player);shotTarget=null;notice(name==='grapple'?'Grapple gun equipped':'Lunge spear equipped');
 }
 function releaseItemUse(key){
  keys.delete(key);
  if(!keys.has('Mouse0')&&!keys.has('KeyQ')){player.useHeld=false;player.requireRelease=false;player.grappleHeld=false;player.grapple=null;}
 }
-function clearInput(){keys.clear();jumpQueued=false;shotTarget=null;player.grapple=null;player.grappleHeld=false;player.useHeld=false;player.requireRelease=false;turn=0;touchLook=null;}
-function returnHome(){cancelTrial(trial);movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,lungeTime:0});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
+function clearInput(){spearQueued=false;player.spearBuffer=0;keys.clear();jumpQueued=false;shotTarget=null;player.grapple=null;player.grappleHeld=false;player.useHeld=false;player.requireRelease=false;turn=0;touchLook=null;}
+function returnHome(){cancelTrial(trial);movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,spearBuffer:0,lungeTime:0});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
 function reset(){cancelTrial(trial);seenLandings=0;player=newPlayer();accumulator=0;returnHome();$('hooks').textContent='0';$('jumps').textContent='0';$('speed').textContent='0.0';seenFlips=0;seenHooks=0;seenLunges=0;lungeAt=-100;seenCollected=0;flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
 function startTrial(){
  if(!player.inventory.includes('grapple')||!player.inventory.includes('spear')){returnHome();notice('Collect both plaza items, then press T to start the trial.');return;}
- clearInput();movementFx.clear();Object.assign(player,COURSE.start,{vx:0,vy:0,vz:0,grounded:true,crouched:false,slideTime:0,slideBuffer:0,slideCooldown:0,boostTime:0,padId:null,spearCooldown:0,lungeTime:0});
+ clearInput();movementFx.clear();Object.assign(player,COURSE.start,{vx:0,vy:0,vz:0,grounded:true,crouched:false,slideTime:0,slideBuffer:0,slideCooldown:0,boostTime:0,padId:null,spearCooldown:0,spearBuffer:0,lungeTime:0});
  const next=COURSE.gates[1];yaw=Math.atan2(-(next.x-player.x),-(next.z-player.z));pitch=0;beginTrial(trial);updateCamera(0);
 }
 $('trial-start').onclick=startTrial;$('menu-trial').onclick=()=>{startTrial();play();};
@@ -221,8 +223,8 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
  if(!paused){accumulator+=dt;while(accumulator>=1/120){
   const before={x:player.x,y:player.y,z:player.z,falls:player.falls};
   if(trial.phase==='countdown'){player.time+=1/120;tickTrial(trial,before,player,1/120);}
-  else {step(player,{...direction(),jump:jumpQueued,use:keys.has('Mouse0')||keys.has('KeyQ'),target:shotTarget,facingX:-Math.sin(yaw)*Math.cos(pitch),facingY:-Math.sin(pitch),facingZ:-Math.cos(yaw)*Math.cos(pitch),slide:keys.has('KeyC')||keys.has('ShiftLeft')||keys.has('ShiftRight')},1/120);tickTrial(trial,before,player,1/120);}
-  jumpQueued=false;accumulator-=1/120;
+  else {step(player,{...direction(),jump:jumpQueued,use:keys.has('Mouse0')||keys.has('KeyQ'),target:shotTarget,spearPressed:spearQueued,facingX:-Math.sin(yaw)*Math.cos(pitch),facingY:-Math.sin(pitch),facingZ:-Math.cos(yaw)*Math.cos(pitch),slide:keys.has('KeyC')||keys.has('ShiftLeft')||keys.has('ShiftRight')},1/120);tickTrial(trial,before,player,1/120);}
+  jumpQueued=false;spearQueued=false;accumulator-=1/120;
  }}
  avatar.position.set(player.x,player.y,player.z);if(Math.hypot(player.vx,player.vz)>.1){const heading=Math.atan2(-player.vx,-player.vz),delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*(1-Math.exp(-dt*22));}
  legs.forEach((leg,i)=>leg.rotation.x=!paused&&player.grounded&&Math.hypot(player.vx,player.vz)>.1?Math.sin(clock.elapsedTime*20+i*Math.PI)*.65:0);
