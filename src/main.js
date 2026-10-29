@@ -1,11 +1,12 @@
 import * as THREE from 'three';
 import './style.css';
+import {texturedBlock,equipmentMaterial} from './pixel-textures.js';
 import {MAP_SIZE} from './world.js';
 import {motionPose} from './motion.js';
 import {world,SPAWN,boostPads,itemPickups,hasEquipped,cycleItem,SPEAR_COOLDOWN,GRAPPLE_RANGE,canGrapple,newPlayer,step} from './physics.js';
 
 document.querySelector('#app').innerHTML=`
-<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">Expanded momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
+<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">Pixel momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
 <div id="inventory" aria-live="polite"><span id="item-grapple">Grapple · find pickup</span><span id="item-spear">Spear · find pickup</span></div>
 <div id="ability"><span class="ability-dot"></span><span id="ability-text">HOOK · 20m reach</span></div><div id="notice" role="status"></div>
 <div id="reticle" aria-hidden="true"><span>+</span></div>
@@ -18,11 +19,11 @@ const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerW
 scene.add(new THREE.HemisphereLight('#e9fbff','#8c8173',2.5));
 const sun=new THREE.DirectionalLight('#fff2d5',3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-32,right:32,top:32,bottom:-32,far:100});sun.shadow.bias=-.001;scene.add(sun);scene.add(sun.target);
 const mat=color=>new THREE.MeshStandardMaterial({color,roughness:.85});
-const materials=new Map();function material(color){if(!materials.has(color))materials.set(color,mat(color));return materials.get(color);}
+const materials=new Map();function material(color){if(!materials.has(color))materials.set(color,equipmentMaterial(color)||mat(color));return materials.get(color);}
 // Render the same solid boxes used by movement and camera collisions.
-const surfaces=world.map(w=>{const mesh=new THREE.Mesh(new THREE.BoxGeometry(w.w,w.h,w.d),material(w.color));mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;scene.add(mesh);return mesh;});
+const surfaces=world.map(w=>{const mesh=texturedBlock(w);mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;scene.add(mesh);return mesh;});
 // Painted ground lines give distance and direction cues without adding obstacles.
-const grid=new THREE.GridHelper(MAP_SIZE,60,'#8ca886','#93af8e');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.35;scene.add(grid);
+const grid=new THREE.GridHelper(MAP_SIZE,60,'#8ca886','#93af8e');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.08;scene.add(grid);
 function groundLabel(text,x,z,color='#536c62'){
  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=192;const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.font='bold 65px sans-serif';ctx.textAlign='center';ctx.fillText(text,512,120);
  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(12,2.25),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,depthWrite:false}));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.015,z);scene.add(mesh);

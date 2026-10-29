@@ -70,3 +70,9 @@ The `docs/` directory contains a self-contained browser version. To refresh both
 Once these hosting files are on `main`, open the repository on GitHub, go to **Settings → Pages**, select **Deploy from a branch**, choose **main** and **/docs**, then select **Save**. GitHub will show the live address when deployment finishes. The game will be publicly accessible. GitHub Pages availability for private repositories depends on the account plan; keep repository visibility unchanged unless explicitly approved.
 
 Players open the site in Chrome and click **Lock mouse & play**. Later site updates appear on refresh; browsers may need Ctrl+F5 to refresh cached files.
+
+## Pixel-art materials
+
+The world uses original procedural 16 × 16 pixel tiles for grass, dirt, stone, sandstone, bricks, wood, bark, leaves, and metal. Gear and sleeves also have matching pixel materials. These are generated locally by `src/pixel-textures.js`, with no external texture downloads or copied game assets.
+
+Textures repeat at one tile per world metre using face-scaled UVs. Nearest filtering keeps pixels crisp close up; nearest mip levels reduce distant shimmer. Tile textures and materials are shared to keep the 180m map lightweight. Boost arrows, grapple targeting, pickup rings, and instruction labels remain clear. Changing materials does not change collision geometry or movement.
