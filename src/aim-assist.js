@@ -3,7 +3,7 @@ import {droneRoutes,droneAt} from './drones.js';
 // Small acquisition cone; never rotates the camera or extends grapple reach.
 export function assistedTarget(player,origin,direction,direct){
  if(direct&&canGrapple(player,direct))return direct;
- const cone=4*Math.PI/180;
+ const cone=6*Math.PI/180;
  let best=null,bestScore=Infinity;
  const boxes=[...world,...droneRoutes.map(r=>({...droneAt(r.id,player.time),droneId:r.id}))];
  for(const box of boxes){

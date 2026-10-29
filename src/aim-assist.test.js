@@ -22,3 +22,12 @@ test('assist respects range and occlusion and gives valid direct shots priority'
  try{const a=assistedTarget(p,o,dir,null);assert.notEqual(a?.droneId,d.id);assert.ok(!a||canGrapple(p,a));}finally{world.pop();}
  const far={...p,z:d.z-40};assert.notEqual(assistedTarget(far,far,dir,null)?.droneId,d.id);
 });
+
+test('wider assist catches a five-degree near miss but rejects a shot outside six degrees',()=>{
+ const box={id:'assist-cone-test',x:70,y:25,z:70,w:.2,h:.2,d:.2};world.push(box);
+ try{
+  const p={...newPlayer(),x:70,y:25,z:58},dir=a=>({x:Math.sin(a*Math.PI/180),y:0,z:Math.cos(a*Math.PI/180)});
+  const target=assistedTarget(p,p,dir(5),null);assert.equal(target?.surfaceId,box.id);assert.ok(canGrapple(p,target));
+  assert.notEqual(assistedTarget(p,p,dir(8),null)?.surfaceId,box.id);
+ }finally{world.pop();}
+});
