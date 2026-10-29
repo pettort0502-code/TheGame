@@ -63,11 +63,14 @@ export function cycleItem(p){
  const index=p.inventory.indexOf(p.equipped);p.equipped=p.inventory[(index+1)%p.inventory.length];
  p.grapple=null;p.ropeLength=0;p.spearBuffer=0;p.hammerBuffer=0;p.slamming=false;p.lungeTime=0;p.requireRelease=p.useHeld;return p.equipped;
 }
-export function dropItem(p){
+export function dropItem(p,direction={x:0,y:0,z:-1}){
  if(!p.equipped)return null;
  const type=p.equipped,item=itemPickups.find(i=>i.type===type);
- const floor=Math.max(0,...world.filter(w=>Math.abs(p.x-w.x)<w.w/2&&Math.abs(p.z-w.z)<w.d/2&&w.y+w.h/2<=p.y-halfHeight(p)+.1).map(w=>w.y+w.h/2));
- p.pickupPositions[item.id]={x:p.x,y:floor+.8,z:p.z};
+ const length=Math.hypot(direction.x,direction.y,direction.z)||1;
+ const aim={x:direction.x/length,y:direction.y/length,z:direction.z/length};
+ const origin={x:p.x,y:p.y+.35,z:p.z};
+ p.pickupPositions[item.id]={...origin};
+ p.thrownItems.push({id:item.id,type,...origin,vx:aim.x*28+p.vx*.35,vy:aim.y*28+4+p.vy*.2,vz:aim.z*28+p.vz*.35,life:0,damaging:true});
  p.pickupDelay[item.id]=p.time+1;
  p.collectedPickups=p.collectedPickups.filter(id=>id!==item.id);
  p.inventory=p.inventory.filter(t=>t!==type);p.equipped=p.inventory[0]||null;
@@ -77,7 +80,7 @@ export function dropItem(p){
 function collectItems(p){
  for(const item of itemPickups){
   const pos=p.pickupPositions[item.id]||item;
-  if(p.inventory.length>=2||p.time<(p.pickupDelay[item.id]||0)||p.collectedPickups.includes(item.id)||Math.hypot(p.x-pos.x,p.z-pos.z)>1.15||Math.abs(p.y-pos.y)>1.2)continue;
+  if(p.thrownItems.some(t=>t.id===item.id)||p.inventory.length>=2||p.time<(p.pickupDelay[item.id]||0)||p.collectedPickups.includes(item.id)||Math.hypot(p.x-pos.x,p.z-pos.z)>1.15||Math.abs(p.y-pos.y)>1.2)continue;
   p.collectedPickups.push(item.id);p.inventory.push(item.type);
   if(!p.equipped){p.equipped=item.type;p.requireRelease=p.useHeld;}
  }
@@ -215,4 +218,4 @@ export function step(player,input,dt) {
   if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.slamming=false;player.falls++;}
   return player;
 }
-export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,lungeTime:0,lunges:0};}
+export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,lungeTime:0,lunges:0};}

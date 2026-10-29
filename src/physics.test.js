@@ -206,12 +206,12 @@ test('tighter jump keeps similar height with shorter airtime and unchanged horiz
  assert.ok(peak-.65>3.2&&peak-.65<3.5);assert.ok(elapsed>.95&&elapsed<1.05);assert.equal(p.vx,9);
 });
 
-test('two-slot inventory blocks hammer until an item is dropped and dropped gear can be recovered',()=>{
+test('two-slot inventory blocks hammer until an item is thrown and flying gear cannot be recollected',()=>{
  const hammer=itemPickups.find(i=>i.type==='hammer'),p={...newPlayer(),x:hammer.x,y:hammer.y,z:hammer.z,inventory:['grapple','spear'],equipped:'grapple',collectedPickups:['plaza-grapple','plaza-spear']};
  step(p,idle,dt);assert.equal(p.inventory.includes('hammer'),false);
  assert.equal(dropItem(p),'grapple');step(p,idle,dt);assert.deepEqual(p.inventory,['spear','hammer']);assert.equal(p.equipped,'spear');
  const dropped=p.pickupPositions['plaza-grapple'];assert.ok(dropped);assert.equal(p.collectedPickups.includes('plaza-grapple'),false);
- cycleItem(p);assert.equal(p.equipped,'hammer');dropItem(p);p.time+=1.1;step(p,idle,dt);assert.ok(p.inventory.includes('grapple'));assert.equal(p.inventory.length,2);
+ cycleItem(p);assert.equal(p.equipped,'hammer');dropItem(p);p.time+=1.1;step(p,idle,dt);assert.equal(p.inventory.includes('grapple'),false);assert.equal(p.thrownItems.length,2);assert.equal(p.inventory.length,1);
 });
 test('hammer slams from the air, emits one shockwave and bounces while preserving horizontal speed',()=>{
  const p={...newPlayer(),x:-60,y:6,z:0,vx:12,inventory:['hammer'],equipped:'hammer'};

@@ -13,6 +13,25 @@ function destroy(c,e,p){
  if(e.kind==='drone'){p.deadDrones.push(e.id);if(p.grapple?.droneId===e.id){p.grapple=null;p.ropeLength=0;}}
 }
 function blocked(a,b,ignore){return world.some(w=>w.id!==ignore&&segmentHit(a,b,w)!==null);}
+function tickThrown(c,p,dt){
+ p.thrownItems=p.thrownItems.filter(t=>{
+  const old={x:t.x,y:t.y,z:t.z};t.vy-=20*dt;t.life+=dt;
+  const end={x:t.x+t.vx*dt,y:t.y+t.vy*dt,z:t.z+t.vz*dt};
+  let fraction=1,hit=null,enemy=null;
+  for(const w of world){const f=segmentHit(old,end,{...w,w:w.w+.3,h:w.h+.3,d:w.d+.3});if(f!==null&&f<=fraction){fraction=f;hit=w;}}
+  if(t.damaging&&hit){enemy=c.sentries.find(e=>!e.dead&&e.id===hit.id)||null;if(enemy)hit=null;}
+  if(t.damaging)for(const e of c.sentries){if(e.dead)continue;const f=segmentHit(old,end,{...e,w:1.6,h:1.7,d:1.6});if(f!==null&&f<=fraction){fraction=f;enemy=e;hit=null;}}
+  const at=Math.max(0,fraction-.002);t.x=old.x+(end.x-old.x)*at;t.y=old.y+(end.y-old.y)*at;t.z=old.z+(end.z-old.z)*at;
+  if(enemy){destroy(c,enemy,p);t.damaging=false;t.vx*=.15;t.vz*=.15;t.vy=1;}
+  if(hit){
+   t.damaging=false;
+   if(t.vy<0&&old.y>=hit.y+hit.h/2+.14){p.pickupPositions[t.id]={x:t.x,y:hit.y+hit.h/2+.8,z:t.z};p.pickupDelay[t.id]=p.time+.35;return false;}
+   t.vx=0;t.vz=0;t.vy=Math.min(t.vy,0);
+  }
+  if(t.y< -18||t.life>12){delete p.pickupPositions[t.id];return false;}
+  p.pickupPositions[t.id]={x:t.x,y:t.y,z:t.z};return true;
+ });
+}
 export function tickCombat(c,p,before,dt){
  if(p.falls!==c.falls){c.falls=p.falls;c.health=MAX_HEALTH;c.shots=[];c.invulnerable=1;c.quiet=0;}
  c.flash=Math.max(0,c.flash-dt);c.invulnerable=Math.max(0,c.invulnerable-dt);c.quiet+=dt;
@@ -49,6 +68,7 @@ export function tickCombat(c,p,before,dt){
   if(c.shots.length<64)c.shots.push({x:e.x,y:e.y,z:e.z,vx:dx/d*SHOT_SPEED,vy:dy/d*SHOT_SPEED,vz:dz/d*SHOT_SPEED,life:3,owner:e.id});
   e.charge=0;e.cooldown=2;
  }
+ tickThrown(c,p,dt);
  let defeated=c.health<=0;
  c.shots=c.shots.filter(s=>{
   const old={x:s.x,y:s.y,z:s.z};s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;s.life-=dt;
