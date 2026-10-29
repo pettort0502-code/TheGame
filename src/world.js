@@ -1,5 +1,5 @@
 export const SPAWN = { x: 0, y: .77, z: 8 };
-export const MAP_SIZE=180;
+export const MAP_SIZE=180*Math.sqrt(3);
 export const world = [];
 export const boostPads=[];
 function block(id,x,bottom,z,w,h,d,color='#b7b6a4',zone='Open meadow') {
@@ -84,3 +84,24 @@ export const itemPickups=[
  {id:'plaza-grapple',type:'grapple',x:-1.5,y:.95,z:5,label:'GRAPPLE GUN'},
  {id:'plaza-spear',type:'spear',x:1.5,y:.95,z:5,label:'LUNGE SPEAR'},
 ];
+
+// Outer districts triple the playable ground area while keeping the plaza familiar.
+for(const [name,cx,cz] of [['North foundry',0,-112],['East reactor',112,0],['South docks',0,112],['West stacks',-112,0],['North-east spires',108,-108],['South-west spires',-108,108]]){
+ for(let i=0;i<4;i++){
+  const x=cx-18+i*12,z=cz+(i%2?9:-9),h=4+i*3;
+  block(`expansion-${name}-roof-${i}`,x,0,z,7,h,7,'#b9ad98',name);
+  block(`expansion-${name}-step-${i}`,x-5,0,z+5,4,h*.45,4,'#cdbb98',name);
+ }
+ block(`expansion-${name}-post-a`,cx-14,0,cz+22,1,13,1,'#466774',name);
+ block(`expansion-${name}-post-b`,cx+14,0,cz+22,1,13,1,'#466774',name);
+ block(`expansion-${name}-beam`,cx,13,cz+22,29,.6,2,'#d8ae72',name);
+ block(`expansion-${name}-slide-left`,cx-2,0,cz-24,.5,1.5,8,'#4b9ca6',name);
+ block(`expansion-${name}-slide-right`,cx+2,0,cz-24,.5,1.5,8,'#4b9ca6',name);
+ block(`expansion-${name}-slide-ceiling`,cx,.95,cz-24,4.5,.35,8,'#caab7f',name);
+ pad(`expansion-${name}-launch`,cx,cz-32,0,1);
+}
+// Launch routes connect the inner and outer districts.
+for(const [i,x,z,dx,dz] of [[0,0,-86,0,-1],[1,86,0,1,0],[2,0,86,0,1],[3,-86,0,-1,0]])pad(`outbound-${i}`,x,z,dx,dz);
+
+export const enemySpawns=[[0,-112],[112,0],[0,112],[-112,0],[108,-108],[-108,108],[65,-55],[-65,55]].map(([x,z],i)=>({id:`sentry-${i}`,x:x+18,y:1.6,z}));
+for(const e of enemySpawns)block(e.id,e.x,0,e.z,1.4,1.2,1.4,'#d36a8e','Sentry territory');

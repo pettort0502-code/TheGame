@@ -1,6 +1,9 @@
 import * as THREE from 'three';
 import './style.css';
 import {neonBlock,equipmentMaterial,glowMaterial} from './neon-materials.js';
+import {assistedTarget} from './aim-assist.js';
+import {newCombat,tickCombat} from './enemies.js';
+import {enemyVisuals} from './enemy-visuals.js';
 import {MAP_SIZE} from './world.js';
 import {droneRoutes,droneAt} from './drones.js';
 import {movementEffects} from './movement-effects.js';
@@ -9,18 +12,18 @@ import {world,SPAWN,boostPads,itemPickups,hasEquipped,cycleItem,SPEAR_COOLDOWN,G
 
 document.querySelector('#app').innerHTML=`
 <div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">After-dark momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
-<div id="drone-markers"></div><div id="landing-flash"></div>
+<div id="drone-markers"></div><div id="landing-flash"></div><div id="damage-flash"></div><div id="health">SHIELD · 3 / 3</div>
 <div id="inventory" aria-live="polite"><span id="item-grapple">Grapple · find pickup</span><span id="item-spear">Spear · find pickup</span></div>
 <div id="ability"><span class="ability-dot"></span><span id="ability-text">HOOK · 20m reach</span></div><div id="notice" role="status"></div>
 <div id="reticle" aria-hidden="true"><span>+</span></div>
 <div id="touch"><div class="dpad"><button data-key="KeyW" aria-label="Forward">↑</button><button data-key="KeyA" aria-label="Left">←</button><button data-key="KeyS" aria-label="Back">↓</button><button data-key="KeyD" aria-label="Right">→</button></div><div class="touch-actions"><button id="look-left" aria-label="Turn camera left">↶</button><button id="look-right" aria-label="Turn camera right">↷</button><button id="slide" data-key="KeyC">Slide</button><button id="switch-item">Switch</button><button id="hook" data-key="KeyQ">Use</button><button id="jump" data-key="Space">Jump</button></div></div>
-<div id="menu"><div class="menu-card"><div class="label">SKYBOUND / FREERUN SANDBOX</div><h1 id="menu-title">Find your flow.</h1><p>First-person movement. Double jumps. Wall kicks.<br>Collect the grapple gun and spear beside the plaza.<br>Right-click to switch. Left-click to use your item.</p><button id="play">Lock mouse &amp; play</button><p id="capture-error" role="status" hidden></p><p class="menu-help keyboard">Click to capture the mouse for unlimited turning. Escape opens this menu.</p><p class="menu-help touch-help">Drag the world to look. Use the buttons to move and jump.</p><div class="menu-actions"><button id="menu-home">Back to plaza</button><button id="menu-reset">Reset sandbox</button></div></div></div>`;
+<div id="menu"><div class="menu-card"><div class="label">SKYBOUND / FREERUN SANDBOX</div><h1 id="menu-title">Find your flow.</h1><p>First-person movement. Double jumps. Wall kicks.<br>Collect the grapple gun and spear beside the plaza.<br>Right-click to switch. Left-click to use your item.<br>Explore outward for new districts and projectile sentries.<br>Three shield hits return you to the safe plaza.</p><button id="play">Lock mouse &amp; play</button><p id="capture-error" role="status" hidden></p><p class="menu-help keyboard">Click to capture the mouse for unlimited turning. Escape opens this menu.</p><p class="menu-help touch-help">Drag the world to look. Use the buttons to move and jump.</p><div class="menu-actions"><button id="menu-home">Back to plaza</button><button id="menu-reset">Reset sandbox</button></div></div></div>`;
 const $=id=>document.getElementById(id);
-const scene=new THREE.Scene();scene.background=new THREE.Color('#080b1b');scene.fog=new THREE.Fog('#080b1b',85,190);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#080b1b');scene.fog=new THREE.Fog('#080b1b',110,250);
 const skyPositions=[];
 for(let i=0;i<180;i++){const angle=i*2.399963,rad=65+(i%9)*9;skyPositions.push(Math.cos(angle)*rad,35+(i%17)*4,Math.sin(angle)*rad);}
 const skyGeometry=new THREE.BufferGeometry();skyGeometry.setAttribute('position',new THREE.Float32BufferAttribute(skyPositions,3));scene.add(new THREE.Points(skyGeometry,new THREE.PointsMaterial({color:'#7f91cb',size:.15,transparent:true,opacity:.65,depthWrite:false})));
-const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.04,260);
+const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.04,360);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.querySelector('#app').prepend(renderer.domElement);
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
 scene.add(new THREE.HemisphereLight('#9bbdff','#282343',1.65));
@@ -39,11 +42,12 @@ const droneMeshes=droneRoutes.map(route=>{
 });
 function syncDrones(){for(const d of droneMeshes){const p=droneAt(d.route.id,player.time);d.group.position.set(p.x,p.y,p.z);d.rotors.forEach(r=>r.rotation.z=player.time*12);d.group.updateMatrixWorld(true);}}
 // Painted ground lines give distance and direction cues without adding obstacles.
-const grid=new THREE.GridHelper(MAP_SIZE,60,'#217b8b','#203649');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.55;scene.add(grid);
+const grid=new THREE.GridHelper(MAP_SIZE,104,'#217b8b','#203649');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.55;scene.add(grid);
 function groundLabel(text,x,z,color='#4c859c'){
  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=192;const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.font='bold 65px sans-serif';ctx.textAlign='center';ctx.fillText(text,512,120);
  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(12,2.25),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,depthWrite:false}));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.015,z);scene.add(mesh);
 }
+for(const [name,x,z] of [['NORTH FOUNDRY',0,-112],['EAST REACTOR',112,0],['SOUTH DOCKS',0,112],['WEST STACKS',-112,0],['NE SPIRES',108,-108],['SW SPIRES',-108,108]])groundLabel(name,x,z-36);
 groundLabel('BLOCK GARDEN',-17,2);groundLabel('WALL-JUMP YARD',17,5);groundLabel('FREERUN GANTRY',0,-6);groundLabel('PILLAR FIELD',0,16);groundLabel('ROOFTOPS',26,-28);groundLabel('SLIDE PARK',16,29);groundLabel('SWING FOREST',-43,15);groundLabel('OUTER ROOFTOPS',46,-14);groundLabel('HIGHLINE',0,-53);
 // Luminous launch pads with directional chevrons; physics uses the same footprints.
 const padMeshes=boostPads.map(p=>{
@@ -96,6 +100,8 @@ const pickupMeshes=itemPickups.map(item=>{
 const ropeGeometry=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(),new THREE.Vector3()]);const rope=new THREE.Line(ropeGeometry,new THREE.LineBasicMaterial({color:'#25b9c9'}));rope.frustumCulled=false;scene.add(rope);
 const latch=new THREE.Mesh(new THREE.SphereGeometry(.09,10,8),material('#72dce4'));scene.add(latch);
 scene.add(camera);scene.updateMatrixWorld(true);
+let combat=newCombat();
+const enemies=enemyVisuals(scene,combat);
 let seenLandings=0;
 let player=newPlayer(),keys=new Set(),paused=true,jumpQueued=false,shotTarget=null,noticeTimeout,accumulator=0;
 let yaw=0,pitch=0,turn=0,touchLook=null,lookActive=false;
@@ -103,7 +109,12 @@ let lockPending=false,visualTime=0,flipAt=-100,hookAt=-100,seenFlips=0,seenHooks
 const aimRay=new THREE.Raycaster();
 const coarse=matchMedia('(pointer:coarse)').matches;
 function notice(text){$('notice').textContent=text;$('notice').style.opacity=1;clearTimeout(noticeTimeout);noticeTimeout=setTimeout(()=>$('notice').style.opacity=0,2200);}
-function aimPoint(){syncDrones();aimRay.setFromCamera(new THREE.Vector2(0,0),camera);const hit=aimRay.intersectObjects([...surfaces,...droneMeshes.map(d=>d.body)],false)[0];if(!hit)return null;const p=hit.point.clone().addScaledVector(hit.face.normal,.04);if(hit.object.userData.droneId){const d=droneAt(hit.object.userData.droneId,player.time);return {x:p.x,y:p.y,z:p.z,droneId:d.id,offset:{x:p.x-d.x,y:p.y-d.y,z:p.z-d.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}return {x:p.x,y:p.y,z:p.z,surfaceId:hit.object.userData.surface.id,nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}
+function directAimPoint(){syncDrones();aimRay.setFromCamera(new THREE.Vector2(0,0),camera);const hit=aimRay.intersectObjects([...surfaces,...droneMeshes.map(d=>d.body)],false)[0];if(!hit)return null;const p=hit.point.clone().addScaledVector(hit.face.normal,.04);if(hit.object.userData.droneId){const d=droneAt(hit.object.userData.droneId,player.time);return {x:p.x,y:p.y,z:p.z,droneId:d.id,offset:{x:p.x-d.x,y:p.y-d.y,z:p.z-d.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}return {x:p.x,y:p.y,z:p.z,surfaceId:hit.object.userData.surface.id,nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}
+function aimPoint(){
+ const direct=directAimPoint();
+ if(!hasEquipped(player,'grapple'))return direct;
+ return assistedTarget(player,camera.position,camera.getWorldDirection(new THREE.Vector3()),direct);
+}
 let spearQueued=false;
 function shoot(){
  if(hasEquipped(player,'spear')&&!player.requireRelease)spearQueued=true;
@@ -121,7 +132,7 @@ function releaseItemUse(key){
  if(!keys.has('Mouse0')&&!keys.has('KeyQ')){player.useHeld=false;player.requireRelease=false;player.grappleHeld=false;player.grapple=null;}
 }
 function clearInput(){spearQueued=false;player.spearBuffer=0;keys.clear();jumpQueued=false;shotTarget=null;player.grapple=null;player.grappleHeld=false;player.useHeld=false;player.requireRelease=false;turn=0;touchLook=null;}
-function returnHome(){movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,spearBuffer:0,lungeTime:0});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
+function returnHome(){combat=newCombat();combat.falls=player.falls;movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,spearBuffer:0,lungeTime:0});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
 function reset(){seenLandings=0;player=newPlayer();accumulator=0;returnHome();$('hooks').textContent='0';$('jumps').textContent='0';$('speed').textContent='0.0';seenFlips=0;seenHooks=0;seenLunges=0;lungeAt=-100;seenCollected=0;flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
 function setPaused(value){
  paused=value;clearInput();$('menu').hidden=!value;$('pause').textContent=value?'Resume':'Pause';$('menu-title').textContent=value?'Ready for another run?':'Find your flow.';
@@ -210,7 +221,9 @@ const movementFx=movementEffects(scene,camera);
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
  if(!paused){accumulator+=dt;while(accumulator>=1/120){
+  const before={x:player.x,y:player.y,z:player.z};
   step(player,{...direction(),jump:jumpQueued,use:keys.has('Mouse0')||keys.has('KeyQ'),target:shotTarget,spearPressed:spearQueued,facingX:-Math.sin(yaw)*Math.cos(pitch),facingY:-Math.sin(pitch),facingZ:-Math.cos(yaw)*Math.cos(pitch),slide:keys.has('KeyC')||keys.has('ShiftLeft')||keys.has('ShiftRight')},1/120);
+  if(tickCombat(combat,player,before,1/120)){returnHome();notice('Shield depleted · returned to the safe plaza.');}
   jumpQueued=false;spearQueued=false;accumulator-=1/120;
  }}
  avatar.position.set(player.x,player.y,player.z);if(Math.hypot(player.vx,player.vz)>.1){const heading=Math.atan2(-player.vx,-player.vz),delta=Math.atan2(Math.sin(heading-avatar.rotation.y),Math.cos(heading-avatar.rotation.y));avatar.rotation.y+=delta*(1-Math.exp(-dt*22));}
@@ -235,6 +248,8 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   hand.rotation.set(-.35-pose.tuck*1.5,0,-side*(.15+pose.tuck*.55));
  });
  updateCamera(dt);
+ enemies.tick(combat,player,player.time);
+ $('health').textContent=`SHIELD · ${combat.health} / 3`;$('damage-flash').style.opacity=combat.flash*2;
  movementFx.tick(player,dt,paused);$('landing-flash').style.opacity=movementFx.impact;
  droneMeshes.forEach(d=>{const pos=d.group.position.clone().project(camera),visible=pos.z> -1&&pos.z<1&&Math.abs(pos.x)<.95&&Math.abs(pos.y)<.95;d.marker.hidden=!visible;if(visible){d.marker.style.left=`${(pos.x*.5+.5)*innerWidth}px`;d.marker.style.top=`${(-pos.y*.5+.5)*innerHeight}px`;d.marker.classList.toggle('reachable',canGrapple(player,{droneId:d.route.id,offset:{x:0,y:-.29,z:0}}));}});
 
@@ -245,8 +260,9 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
  for(const type of ['grapple','spear']){const el=$(`item-${type}`),owned=player.inventory.includes(type);el.classList.toggle('owned',owned);el.classList.toggle('equipped',player.equipped===type);el.textContent=`${type==='grapple'?'Grapple':'Spear'} · ${owned?(player.equipped===type?'equipped':'right-click to switch'):'find pickup'}`;}
  $('hook').textContent=player.equipped==='spear'?'Lunge':'Use';
  const target=aimPoint(),ready=hasEquipped(player,'grapple')&&canGrapple(player,target);
- $('ability-text').textContent=!player.equipped?'NO ITEM · collect the pickups beside the plaza':player.equipped==='spear'?(player.lungeTime>0?'SPEAR LUNGE':player.spearCooldown>0?`SPEAR RECHARGING · ${player.spearCooldown.toFixed(1)}s`:'SPEAR READY · click to lunge'):player.slideTime>0?'SLIDING · jump to launch':player.boostTime>0&&!player.grapple?'SPEED BOOST · slide to keep your flow':player.grapple?`${player.grapple.droneId?'DRONE SWING':'SWINGING'} + REELING · ${player.ropeLength.toFixed(1)}m rope · release to fly`:ready?target?.droneId?'DRONE READY · hold click / Q':'HOOK READY · hold click / Q · 20m':target?'OUT OF REACH OR BLOCKED · 20m':'Aim at a surface · 20m reach';
+ $('ability-text').textContent=!player.equipped?'NO ITEM · collect the pickups beside the plaza':player.equipped==='spear'?(player.lungeTime>0?'SPEAR LUNGE':player.spearCooldown>0?`SPEAR RECHARGING · ${player.spearCooldown.toFixed(1)}s`:'SPEAR READY · click to lunge'):player.slideTime>0?'SLIDING · jump to launch':player.boostTime>0&&!player.grapple?'SPEED BOOST · slide to keep your flow':player.grapple?`${player.grapple.droneId?'DRONE SWING':'SWINGING'} + REELING · ${player.ropeLength.toFixed(1)}m rope · release to fly`:ready?target?.assisted?'ASSIST LOCK · hold click / Q':target?.droneId?'DRONE READY · hold click / Q':'HOOK READY · hold click / Q · 20m':target?'OUT OF REACH OR BLOCKED · 20m':'Aim at a surface · 20m reach';
  $('ability').classList.toggle('ready',ready||Boolean(player.grapple));
+ $('reticle').classList.toggle('assisted',ready&&Boolean(target?.assisted));
  $('reticle').classList.toggle('in-range',ready);$('reticle').classList.toggle('latched',Boolean(player.grapple));
  targetHalo.visible=ready&&!player.grapple;
  if(targetHalo.visible){targetHalo.position.set(target.x,target.y,target.z);targetHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(target.nx,target.ny,target.nz));targetHalo.scale.setScalar(1+Math.sin(visualTime*5)*.12);}

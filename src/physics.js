@@ -23,7 +23,7 @@ export function wallContact(player) {
 }
 export const GRAPPLE_RANGE=20;
 export const REEL_SPEED=7, MIN_ROPE_LENGTH=1.5;
-function segmentHit(a,b,w){let lo=0,hi=1;for(const [axis,size] of [['x','w'],['y','h'],['z','d']]){const d=b[axis]-a[axis],min=w[axis]-w[size]/2,max=w[axis]+w[size]/2;if(Math.abs(d)<1e-8){if(a[axis]<min||a[axis]>max)return null;}else{let t1=(min-a[axis])/d,t2=(max-a[axis])/d;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2);if(lo>hi)return null;}}return lo;}
+export function segmentHit(a,b,w){let lo=0,hi=1;for(const [axis,size] of [['x','w'],['y','h'],['z','d']]){const d=b[axis]-a[axis],min=w[axis]-w[size]/2,max=w[axis]+w[size]/2;if(Math.abs(d)<1e-8){if(a[axis]<min||a[axis]>max)return null;}else{let t1=(min-a[axis])/d,t2=(max-a[axis])/d;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2);if(lo>hi)return null;}}return lo;}
 export function canGrapple(p,a,checkRange=true){
  a=resolveAnchor(a,p.time||0);
  if(!a||![a.x,a.y,a.z].every(Number.isFinite))return false;

@@ -108,7 +108,7 @@ test('winch movement contributes inward launch velocity without removing lateral
  constrainRope(p);assert.equal(p.vx,-REEL_SPEED);assert.equal(p.vy,5);
 });
 test('expanded map includes new districts, slide tunnels, and multiple launch pads',()=>{
- assert.equal(world.find(w=>w.id==='ground').w,180);assert.ok(world.some(w=>w.x>50));assert.ok(world.some(w=>w.z>50));assert.ok(world.some(w=>w.z< -65));assert.ok(boostPads.length>=8);assert.ok(REEL_SPEED>=7);
+ assert.ok(Math.abs(world.find(w=>w.id==='ground').w**2-180**2*3)<1e-8);assert.ok(world.some(w=>w.x>50));assert.ok(world.some(w=>w.z>50));assert.ok(world.some(w=>w.z< -65));assert.ok(boostPads.length>=8);assert.ok(REEL_SPEED>=7);
 });
 test('slide lowers the collider without moving the feet and preserves ground momentum',()=>{
  const p={...settled(),x:-60,y:.65,z:0,vx:9};const feet=p.y-halfHeight(p);

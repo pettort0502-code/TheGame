@@ -10,3 +10,5 @@
 #drone-markers{position:absolute;inset:0;pointer-events:none}.drone-marker{position:absolute;width:18px;height:18px;transform:translate(-50%,-50%) rotate(45deg);border:1px solid #ac7fee90;box-shadow:0 0 8px #a04fe72a;color:#9f85c7}.drone-marker[hidden]{display:none}.drone-marker.reachable{border-color:#6ff4ff;color:#9beef9;box-shadow:0 0 12px #1de1ff55}.drone-marker span{position:absolute;top:22px;left:8px;transform:rotate(-45deg);font:8px ui-monospace,monospace;letter-spacing:1px;text-shadow:0 1px 4px #020510}
 
 #landing-flash{position:absolute;inset:0;box-shadow:inset 0 -50px 70px -35px #55dfff;opacity:0;pointer-events:none}
+
+#health{position:absolute;top:136px;right:42px;font:12px ui-monospace,monospace;color:#ffadc9;background:#281528dc;border:1px solid #9d3c6680;border-radius:9px;padding:10px 14px;pointer-events:none}#damage-flash{position:absolute;inset:0;box-shadow:inset 0 0 95px #ff246c;opacity:0;pointer-events:none}#reticle.assisted{outline:1px solid #d48aff;outline-offset:8px;border-radius:50%}@media(max-width:650px){#health{right:20px;top:170px;font-size:10px}}

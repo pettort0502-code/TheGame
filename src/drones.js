@@ -1,4 +1,5 @@
 export const droneRoutes=[
+ ...[[0,-112],[112,0],[0,112],[-112,0],[108,-108],[-108,108]].map(([x,z],i)=>({id:`outer-drone-${i}`,x,y:16,z,rx:5,rz:4,rate:.4,phase:i})),
  {id:'plaza-drone',x:0,y:9,z:-5,rx:4,rz:2,rate:.5,phase:0},
  {id:'course-drone-a',x:42,y:10,z:44,rx:3,rz:3,rate:.55,phase:1},
  {id:'course-drone-b',x:55,y:13,z:53,rx:3,rz:2,rate:.45,phase:2},
