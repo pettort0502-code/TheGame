@@ -1,30 +1,34 @@
 import * as THREE from 'three';
 import './style.css';
-import {texturedBlock,equipmentMaterial} from './pixel-textures.js';
+import {neonBlock,equipmentMaterial,glowMaterial} from './neon-materials.js';
 import {MAP_SIZE} from './world.js';
 import {motionPose} from './motion.js';
 import {world,SPAWN,boostPads,itemPickups,hasEquipped,cycleItem,SPEAR_COOLDOWN,GRAPPLE_RANGE,canGrapple,newPlayer,step} from './physics.js';
 
 document.querySelector('#app').innerHTML=`
-<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">Pixel momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
+<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">After-dark momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
 <div id="inventory" aria-live="polite"><span id="item-grapple">Grapple · find pickup</span><span id="item-spear">Spear · find pickup</span></div>
 <div id="ability"><span class="ability-dot"></span><span id="ability-text">HOOK · 20m reach</span></div><div id="notice" role="status"></div>
 <div id="reticle" aria-hidden="true"><span>+</span></div>
 <div id="touch"><div class="dpad"><button data-key="KeyW" aria-label="Forward">↑</button><button data-key="KeyA" aria-label="Left">←</button><button data-key="KeyS" aria-label="Back">↓</button><button data-key="KeyD" aria-label="Right">→</button></div><div class="touch-actions"><button id="look-left" aria-label="Turn camera left">↶</button><button id="look-right" aria-label="Turn camera right">↷</button><button id="slide" data-key="KeyC">Slide</button><button id="switch-item">Switch</button><button id="hook" data-key="KeyQ">Use</button><button id="jump" data-key="Space">Jump</button></div></div>
 <div id="menu"><div class="menu-card"><div class="label">SKYBOUND / FREERUN SANDBOX</div><h1 id="menu-title">Find your flow.</h1><p>First-person movement. Double jumps. Wall kicks.<br>Collect the grapple gun and spear beside the plaza.<br>Right-click to switch. Left-click to use your item.</p><button id="play">Lock mouse &amp; play</button><p id="capture-error" role="status" hidden></p><p class="menu-help keyboard">Click to capture the mouse for unlimited turning. Escape opens this menu.</p><p class="menu-help touch-help">Drag the world to look. Use the buttons to move and jump.</p><div class="menu-actions"><button id="menu-home">Back to plaza</button><button id="menu-reset">Reset sandbox</button></div></div></div>`;
 const $=id=>document.getElementById(id);
-const scene=new THREE.Scene();scene.background=new THREE.Color('#dcebf0');scene.fog=new THREE.Fog('#dcebf0',85,190);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#080b1b');scene.fog=new THREE.Fog('#080b1b',85,190);
+const skyPositions=[];
+for(let i=0;i<180;i++){const angle=i*2.399963,rad=65+(i%9)*9;skyPositions.push(Math.cos(angle)*rad,35+(i%17)*4,Math.sin(angle)*rad);}
+const skyGeometry=new THREE.BufferGeometry();skyGeometry.setAttribute('position',new THREE.Float32BufferAttribute(skyPositions,3));scene.add(new THREE.Points(skyGeometry,new THREE.PointsMaterial({color:'#7f91cb',size:.15,transparent:true,opacity:.65,depthWrite:false})));
 const camera=new THREE.PerspectiveCamera(74,innerWidth/innerHeight,.04,260);
 const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.querySelector('#app').prepend(renderer.domElement);
-scene.add(new THREE.HemisphereLight('#e9fbff','#8c8173',2.5));
-const sun=new THREE.DirectionalLight('#fff2d5',3);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-32,right:32,top:32,bottom:-32,far:100});sun.shadow.bias=-.001;scene.add(sun);scene.add(sun.target);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
+scene.add(new THREE.HemisphereLight('#9bbdff','#282343',1.65));
+const sun=new THREE.DirectionalLight('#a9bfff',2.1);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-32,right:32,top:32,bottom:-32,far:100});sun.shadow.bias=-.001;scene.add(sun);scene.add(sun.target);
 const mat=color=>new THREE.MeshStandardMaterial({color,roughness:.85});
 const materials=new Map();function material(color){if(!materials.has(color))materials.set(color,equipmentMaterial(color)||mat(color));return materials.get(color);}
 // Render the same solid boxes used by movement and camera collisions.
-const surfaces=world.map(w=>{const mesh=texturedBlock(w);mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;scene.add(mesh);return mesh;});
+const surfaces=world.map(w=>{const mesh=neonBlock(w);mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;scene.add(mesh);return mesh;});
 // Painted ground lines give distance and direction cues without adding obstacles.
-const grid=new THREE.GridHelper(MAP_SIZE,60,'#8ca886','#93af8e');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.08;scene.add(grid);
-function groundLabel(text,x,z,color='#536c62'){
+const grid=new THREE.GridHelper(MAP_SIZE,60,'#217b8b','#203649');grid.position.y=.006;grid.material.transparent=true;grid.material.opacity=.55;scene.add(grid);
+function groundLabel(text,x,z,color='#4c859c'){
  const canvas=document.createElement('canvas');canvas.width=1024;canvas.height=192;const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.font='bold 65px sans-serif';ctx.textAlign='center';ctx.fillText(text,512,120);
  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(12,2.25),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(canvas),transparent:true,depthWrite:false}));mesh.rotation.x=-Math.PI/2;mesh.position.set(x,.015,z);scene.add(mesh);
 }
@@ -32,16 +36,16 @@ groundLabel('BLOCK GARDEN',-17,2);groundLabel('WALL-JUMP YARD',17,5);groundLabel
 // Luminous launch pads with directional chevrons; physics uses the same footprints.
 const padMeshes=boostPads.map(p=>{
  const group=new THREE.Group();group.position.set(p.x,p.y+.025,p.z);
- const base=new THREE.Mesh(new THREE.BoxGeometry(p.w,.035,p.d),new THREE.MeshStandardMaterial({color:'#37ced1',emissive:'#1bb7bf',emissiveIntensity:.7}));group.add(base);
+ const base=new THREE.Mesh(new THREE.BoxGeometry(p.w,.035,p.d),new THREE.MeshStandardMaterial({color:'#062c37',emissive:'#08bfd1',emissiveIntensity:1.1}));group.add(base);
  const arrows=new THREE.Group();arrows.rotation.y=Math.atan2(-p.dx,-p.dz);
- for(const z of [-.65,0,.65])for(const side of [-1,1]){const stripe=new THREE.Mesh(new THREE.BoxGeometry(.09,.045,.65),new THREE.MeshBasicMaterial({color:'#fff3ab'}));stripe.rotation.y=side*.65;stripe.position.set(side*.2,.04,z);arrows.add(stripe);}
+ for(const z of [-.65,0,.65])for(const side of [-1,1]){const stripe=new THREE.Mesh(new THREE.BoxGeometry(.09,.045,.65),new THREE.MeshBasicMaterial({color:'#b1ffff'}));stripe.rotation.y=side*.65;stripe.position.set(side*.2,.04,z);arrows.add(stripe);}
  group.add(arrows);scene.add(group);return group;
 });
 const targetHalo=new THREE.Mesh(new THREE.RingGeometry(.13,.19,32),new THREE.MeshBasicMaterial({color:'#75ffff',side:THREE.DoubleSide,transparent:true,opacity:.9,depthWrite:false}));targetHalo.renderOrder=3;scene.add(targetHalo);
-const spawnRing=new THREE.Mesh(new THREE.TorusGeometry(2,.025,6,64),new THREE.MeshBasicMaterial({color:'#bb9464'}));spawnRing.rotation.x=Math.PI/2;spawnRing.position.set(SPAWN.x,.135,SPAWN.z);scene.add(spawnRing);
+const spawnRing=new THREE.Mesh(new THREE.TorusGeometry(2,.025,6,64),new THREE.MeshBasicMaterial({color:'#e34dff'}));spawnRing.rotation.x=Math.PI/2;spawnRing.position.set(SPAWN.x,.135,SPAWN.z);scene.add(spawnRing);
 // Luminous paint marks climbable towers; the solid faces are climbable.
 for(const w of world.filter(w=>w.color==='#4b9ca6')){
- for(let y=.7;y<w.h;y+=1.2){const stripe=new THREE.Mesh(new THREE.BoxGeometry(w.w+.015,.035,w.d+.015),new THREE.MeshBasicMaterial({color:'#9ad9d6'}));stripe.position.set(w.x,y,w.z);scene.add(stripe);}
+ for(let y=.7;y<w.h;y+=1.2){const stripe=new THREE.Mesh(new THREE.BoxGeometry(w.w+.015,.035,w.d+.015),new THREE.MeshBasicMaterial({color:'#29ddeb'}));stripe.position.set(w.x,y,w.z);scene.add(stripe);}
 }
 const avatar=new THREE.Group(),body=new THREE.Group();avatar.add(body);const dark=material('#35566a');
 function part(w,h,d,m,x,y,z){const mesh=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);mesh.position.set(x,y,z);mesh.castShadow=true;body.add(mesh);return mesh;}
@@ -50,7 +54,7 @@ const legs=[part(.22,.35,.24,dark,-.17,-.5,0),part(.22,.35,.24,dark,.17,-.5,0)];
 // First-person hands animate independently, keeping the view stable during flips.
 const hands=[-1,1].map(side=>{
  const hand=new THREE.Group();
- const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.12,.30,.13),material('#d97552'));hand.add(sleeve);
+ const sleeve=new THREE.Mesh(new THREE.BoxGeometry(.12,.30,.13),material('#d97552'));hand.add(sleeve);const cuff=new THREE.Mesh(new THREE.BoxGeometry(.125,.018,.135),material('#7bd9de'));cuff.position.y=-.10;hand.add(cuff);
  const palm=new THREE.Mesh(new THREE.BoxGeometry(.105,.12,.12),material('#efcfaa'));palm.position.y=.19;hand.add(palm);
  hand.position.set(side*.29,-.44,-.58);hand.scale.setScalar(.8);camera.add(hand);return hand;
 });
@@ -71,8 +75,9 @@ const spear=spearModel();spear.position.set(0,.18,-.03);spear.rotation.x=.35;han
 const pickupMeshes=itemPickups.map(item=>{
  const group=new THREE.Group(),model=item.type==='grapple'?grappleModel().model:spearModel();
  model.scale.setScalar(item.type==='grapple'?2.1:1);model.rotation.x=item.type==='spear'?Math.PI/2:0;group.add(model);group.position.set(item.x,item.y,item.z);scene.add(group);
- const ring=new THREE.Mesh(new THREE.TorusGeometry(.55,.035,6,40),new THREE.MeshBasicMaterial({color:item.type==='grapple'?'#72f7ff':'#ffd37a'}));ring.rotation.x=-Math.PI/2;ring.position.set(item.x,.145,item.z);scene.add(ring);
- const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#294754e8';ctx.fillRect(0,0,512,128);ctx.fillStyle='white';ctx.font='bold 35px sans-serif';ctx.textAlign='center';ctx.fillText(item.label,256,54);ctx.font='26px sans-serif';ctx.fillText('WALK INTO TO COLLECT',256,96);
+ const aura=new THREE.Sprite(glowMaterial(item.type==='grapple'?'#1de1ff':'#ff38c7'));aura.position.set(0,0,0);aura.scale.set(1.1,1.1,1);group.add(aura);
+ const ring=new THREE.Mesh(new THREE.TorusGeometry(.55,.035,6,40),new THREE.MeshBasicMaterial({color:item.type==='grapple'?'#45efff':'#fa63d5'}));ring.rotation.x=-Math.PI/2;ring.position.set(item.x,.145,item.z);scene.add(ring);
+ const canvas=document.createElement('canvas');canvas.width=512;canvas.height=128;const ctx=canvas.getContext('2d');ctx.fillStyle='#0c132bee';ctx.fillRect(0,0,512,128);ctx.fillStyle='white';ctx.font='bold 35px sans-serif';ctx.textAlign='center';ctx.fillText(item.label,256,54);ctx.font='26px sans-serif';ctx.fillText('WALK INTO TO COLLECT',256,96);
  const label=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),depthTest:true}));label.scale.set(2.2,.55,1);label.position.set(item.x,item.y+1.1,item.z);scene.add(label);
  return {item,group,ring,label};
 });

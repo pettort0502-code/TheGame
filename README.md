@@ -71,8 +71,8 @@ Once these hosting files are on `main`, open the repository on GitHub, go to **S
 
 Players open the site in Chrome and click **Lock mouse & play**. Later site updates appear on refresh; browsers may need Ctrl+F5 to refresh cached files.
 
-## Pixel-art materials
+## Dark neon art direction
 
-The world uses original procedural 16 × 16 pixel tiles for grass, dirt, stone, sandstone, bricks, wood, bark, leaves, and metal. Gear and sleeves also have matching pixel materials. These are generated locally by `src/pixel-textures.js`, with no external texture downloads or copied game assets.
+The world uses smooth charcoal and indigo surfaces with cyan, magenta, and violet edge lighting, a dark sky, a subtle floor grid, and distant light points. Pickup auras, illuminated equipment, boost arrows, and the central grapple target remain bright and easy to recognise. The HUD and menus use matching dark panels and neon accents.
 
-Textures repeat at one tile per world metre using face-scaled UVs. Nearest filtering keeps pixels crisp close up; nearest mip levels reduce distant shimmer. Tile textures and materials are shared to keep the 180m map lightweight. Boost arrows, grapple targeting, pickup rings, and instruction labels remain clear. Changing materials does not change collision geometry or movement.
+`src/neon-materials.js` supplies shared world/equipment materials and soft pickup halos. The previous pixel-texture generator has been removed. This visual theme changes no movement, item mechanics, collision boxes, or map layout. It uses no external texture assets or fullscreen bloom pass.
