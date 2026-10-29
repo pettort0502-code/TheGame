@@ -63,3 +63,32 @@ test('thrown weapons stop at cover before enemies and can hit solid turret bases
  const q={...newPlayer(),x:turret.x-5,y:.65,z:turret.z,inventory:['hammer'],equipped:'hammer',collectedPickups:['plaza-hammer']};dropItem(q,{x:1,y:0,z:0});
  for(let i=0;i<60&&!turret.dead;i++){q.time+=dt;tickCombat(fresh,q,q,dt);}assert.equal(turret.dead,true);newCombat();
 });
+
+test('armored robots take two separate spear lunges, with one damage event per lunge',()=>{
+ const c=newCombat(),e=c.sentries.find(e=>e.armored);c.sentries=[e];
+ const p={...newPlayer(),x:e.x-1.5,y:.65,z:e.z,lungeTime:.2,lunges:1,spearDirection:{x:1,y:0,z:0}};
+ tickCombat(c,p,p,dt);assert.equal(e.hp,1);assert.equal(e.dead,false);assert.ok(c.hitMarker>0);
+ for(let i=0;i<5;i++)tickCombat(c,p,p,dt);assert.equal(e.hp,1);
+ p.lunges=2;tickCombat(c,p,p,dt);assert.equal(e.dead,true);assert.equal(c.kills,1);
+});
+test('a precise spear hit on the glowing weak core destroys armor in one attack',()=>{
+ const c=newCombat(),e=c.sentries.find(e=>e.armored);c.sentries=[e];
+ const p={...newPlayer(),x:e.x-1.7,y:e.y+.55,z:e.z,lungeTime:.2,lunges:1,spearDirection:{x:1,y:0,z:0}};
+ tickCombat(c,p,p,dt);assert.equal(e.dead,true);assert.ok(c.events.some(e=>e.type==='weak'));
+});
+test('javelin throws have less drop at twenty metres than other thrown items',()=>{
+ const height={};for(const type of ['spear','hammer','grapple']){
+  const c=newCombat();c.sentries=[];const p={...newPlayer(),x:-60,y:30,z:0,inventory:[type],equipped:type,collectedPickups:[`plaza-${type}`]};dropItem(p,{x:1,y:0,z:0});
+  while(p.thrownItems[0].x< -40){p.time+=dt;tickCombat(c,p,p,dt);}
+  height[type]=p.thrownItems[0].y;
+ }
+ assert.ok(height.spear>height.hammer+1);assert.equal(height.hammer,height.grapple);
+});
+
+test('a thrown javelin aimed at the core gets weak-point damage before the coarse body stops it',()=>{
+ const c=newCombat(),e=c.sentries.find(e=>e.armored);c.sentries=[e];
+ const p={...newPlayer(),x:e.x-6,y:e.y+.2,z:e.z,inventory:['spear'],equipped:'spear',collectedPickups:['plaza-spear']};
+ dropItem(p,{x:1,y:.008,z:0});let weak=false;
+ for(let i=0;i<40&&!e.dead;i++){p.time+=dt;tickCombat(c,p,p,dt);weak||=c.events.some(event=>event.type==='weak');}
+ assert.equal(e.dead,true);assert.ok(weak);
+});

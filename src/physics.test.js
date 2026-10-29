@@ -221,3 +221,12 @@ test('hammer slams from the air, emits one shockwave and bounces while preservin
  step(p,{...idle,spearPressed:true},dt);assert.equal(p.shockwaves,1);assert.equal(p.slamming,false);
  const ground={...newPlayer(),x:-60,y:.65,z:0,grounded:true,inventory:['hammer'],equipped:'hammer'};step(ground,{...idle,spearPressed:true},dt);assert.equal(ground.shockwaves,1);assert.ok(ground.vy>15);
 });
+
+test('new vertical districts provide climbable ledges up to sixty metres within grapple spacing',()=>{
+ for(let i=0;i<4;i++){
+  const ledges=world.filter(w=>w.id.startsWith(`sky-${i}-ledge--1-`)).sort((a,b)=>a.y-b.y);
+  assert.equal(ledges.length,6);
+  for(let j=1;j<ledges.length;j++)assert.ok(Math.hypot(ledges[j].x-ledges[j-1].x,ledges[j].y-ledges[j-1].y,ledges[j].z-ledges[j-1].z)<GRAPPLE_RANGE);
+  const crown=world.find(w=>w.id===`sky-${i}-crown-hook`);assert.ok(crown.y>=59);
+ }
+});

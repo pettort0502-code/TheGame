@@ -70,7 +70,8 @@ export function dropItem(p,direction={x:0,y:0,z:-1}){
  const aim={x:direction.x/length,y:direction.y/length,z:direction.z/length};
  const origin={x:p.x,y:p.y+.35,z:p.z};
  p.pickupPositions[item.id]={...origin};
- p.thrownItems.push({id:item.id,type,...origin,vx:aim.x*28+p.vx*.35,vy:aim.y*28+4+p.vy*.2,vz:aim.z*28+p.vz*.35,life:0,damaging:true});
+ const speed=type==='spear'?38:28;
+ p.thrownItems.push({id:item.id,type,...origin,vx:aim.x*speed+p.vx*.35,vy:aim.y*speed+(type==='spear'?0:4)+p.vy*.2,vz:aim.z*speed+p.vz*.35,gravity:type==='spear'?4:20,life:0,damaging:true});
  p.pickupDelay[item.id]=p.time+1;
  p.collectedPickups=p.collectedPickups.filter(id=>id!==item.id);
  p.inventory=p.inventory.filter(t=>t!==type);p.equipped=p.inventory[0]||null;

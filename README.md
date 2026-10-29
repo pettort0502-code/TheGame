@@ -35,7 +35,7 @@ First collect the grapple gun from the left pickup, then try the tall beam just 
 
 Slides last up to 1.2 seconds, lower the physical collider, retain speed with light friction, and have a short cooldown to prevent repeated free speed boosts. Holding the slide key afterward keeps you crouched. Releasing stands up only when the ceiling is clear.
 
-There are twenty directional boost pads. Each crossing triggers once and grants a short ground-speed boost; airborne momentum is retained. The map is approximately 312m wide, with three times the previous 180m map’s ground area.
+There are twenty-four directional boost pads. Each crossing triggers once and grants a short ground-speed boost; airborne momentum is retained. The map is approximately 312m wide, with three times the previous 180m map’s ground area.
 
 All three items have distinct visible first-person models. The spear thrusts forward during a lunge, and the grapple rope starts at the gun’s actual muzzle. Picked-up items disappear from the world. Returning home or falling keeps collected gear; Reset sandbox starts empty-handed and restores all three pickups. Switching off the grapple detaches the rope and requires releasing the use button before the new item can fire.
 
@@ -99,10 +99,21 @@ Grapple aim assistance is always active, including while stationary, with a narr
 
 Lunge through enemies with the spear to destroy them. Collision uses a swept strike so fast attacks do not skip targets. Turrets, drones and ground walkers are all destructible; destroyed turret bases stop blocking movement and grappling. Destroyed drones stop shooting, disappear from aim assist and release any attached rope. Destruction creates neon bursts and increments the kill counter. Home or reset respawns enemies and clears kills.
 
-All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and eight ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The safe plaza remains protected.
+All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and twelve ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The safe plaza remains protected.
 
 The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams down from the air; touching down creates a 7m shockwave that destroys enemies and bounces you upward. Using it while grounded immediately blasts and bounces. It preserves horizontal momentum, refreshes the air jump, and has a 1.8s cooldown. Its held model swings during use.
 
 Only two items fit in your inventory. **G** or the **Throw item** button launches the equipped item toward the crosshair, frees one slot, and equips your other item. Thrown gear damages enemies on impact, collides with walls, and falls into a visible pickup that can be collected after landing; a full inventory cannot take another pickup. Right-click/E switches your two carried items. Reset restores the original pickups; Home/falling keeps your loadout and thrown-item locations.
 
 Throws launch at 28m/s with a small upward arc, inherit some player momentum, and use swept collision against enemies and terrain. Each throw can destroy one enemy, then falls to a recoverable pickup. In-flight items cannot be collected. Items thrown off the map return to their original pickup pedestal.
+
+
+## Sound, combat feedback and vertical districts
+
+Procedural sound effects cover grappling, jumping, landing, spear lunges, throws, hammer blasts, warning charges, enemy shots, player damage, armor hits, weak-point hits and destruction. Audio begins after Play, pauses with the game, and can be muted with **U** or the **Sound** button. Enemy sounds attenuate over 48m and simultaneous sounds are limited.
+
+Enemies display amber charging lines, brighter charging lights and an incoming-fire HUD warning with a direction arrow. Hits briefly show a central hit marker, flash the enemy and emit sparks; destruction adds flying neon debris. Four additional armored ground robots take two normal attacks. Their glowing green core above the body is a weak point: a precise spear lunge or thrown-item impact deals double damage. Each spear lunge can damage a given enemy only once.
+
+Thrown spears travel point-first at 38m/s with 4m/s² gravity and no upward launch boost. Grapple guns and hammers use a heavier 28m/s, 20m/s² arc with a small upward boost. All remain recoverable after landing.
+
+Four vertical districts (Skyforge, Neon Ascent, Cloud Gantry and Reactor Highrise) add paired 48m towers, alternating ledges every 8m, bridges at 12/28/44m, 52m crown decks and grapple anchors near 60m. Entry steps and launch pads lead into each climb. The 20m grapple range remains unchanged; intermediate ledges and anchors support climbing in stages.

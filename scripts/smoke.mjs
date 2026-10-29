@@ -9,7 +9,7 @@ const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await load(page);
  assert.ok(await page.locator('canvas').evaluate(c=>!!c.getContext('webgl2')));assert.equal(await page.locator('.drone-marker').count(),10);assert.match(await page.locator('#health').textContent(),/3 \/ 3/);assert.equal(await page.locator('#dash').count(),0);
- await page.locator('#play').click();await page.waitForFunction(()=>document.pointerLockElement?.tagName==='CANVAS');await text(page,'ability-text',/^NO ITEM/);
+ await page.locator('#play').click();await page.waitForFunction(()=>document.pointerLockElement?.tagName==='CANVAS');await text(page,'ability-text',/^NO ITEM/);await page.keyboard.press('KeyU');assert.match(await page.locator('#sound').textContent(),/Sound off/);await page.keyboard.press('KeyU');assert.match(await page.locator('#sound').textContent(),/Sound on/);
  await page.mouse.down();await page.waitForTimeout(200);await page.mouse.up();assert.equal(await page.locator('#hooks').textContent(),'0');assert.equal(await page.locator('#item-grapple').evaluate(e=>e.classList.contains('owned')),false);
  await page.screenshot({path:'/tmp/skybound-pickups.png'});
  await collect(page,'grapple');assert.ok(await page.locator('#item-grapple').evaluate(e=>e.classList.contains('equipped')));

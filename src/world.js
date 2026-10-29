@@ -108,4 +108,23 @@ export const enemySpawns=[[0,-112],[112,0],[0,112],[-112,0],[108,-108],[-108,108
 for(const e of enemySpawns)block(e.id,e.x,0,e.z,1.4,1.2,1.4,'#d36a8e','Sentry territory');
 
 export const enemyBases=world.filter(w=>enemySpawns.some(e=>e.id===w.id));
-export const groundSpawns=[[30,38],[-30,-38],[75,15],[-75,-15],[15,100],[-15,-100],[110,75],[-110,-75]].map(([x,z],i)=>({id:`walker-${i}`,x,y:.75,z}));
+export const groundSpawns=[[30,38],[-30,-38],[75,15],[-75,-15],[15,100],[-15,-100],[110,75],[-110,-75],[55,75],[-55,-75],[105,-60],[-105,60]].map(([x,z],i)=>({id:`walker-${i}`,x,y:.75,z,armored:i>=8}));
+
+// Vertical playgrounds: alternating ledges stay within a single grapple's reach.
+for(const [index,cx,cz] of [[0,78,80],[1,-78,-80],[2,0,-132],[3,126,24]]){
+ const zone=['Skyforge towers','Neon ascent','Cloud gantry','Reactor highrise'][index];
+ for(const side of [-1,1]){
+  const x=cx+side*10;
+  block(`sky-${index}-tower-${side}`,x,0,cz,2,48,2,'#466774',zone);
+  for(let level=0;level<6;level++){
+   const y=4+level*8,z=cz+(level%2?4:-4);
+   block(`sky-${index}-ledge-${side}-${level}`,x,y,z,7,.6,7,'#c6b69b',zone);
+   block(`sky-${index}-hook-${side}-${level}`,x,y+5,z,1.2,.7,1.2,'#4b9ca6',zone);
+  }
+ }
+ for(let level=0;level<3;level++)block(`sky-${index}-bridge-${level}`,cx,12+level*16,cz,22,.5,2,'#d8ae72',zone);
+ block(`sky-${index}-crown`,cx,52,cz,24,.7,7,'#d8ae72',zone);
+ block(`sky-${index}-crown-hook`,cx,59,cz,2,1,2,'#4b9ca6',zone);
+ block(`sky-${index}-entry`,cx,0,cz+10,5,2,5,'#c5b397',zone);
+ pad(`sky-${index}-launch`,cx,cz+18,0,-1);
+}
