@@ -11,5 +11,5 @@ test('hook follows the moving drone and releases with its resulting momentum',()
  const d=droneAt('plaza-drone'),p={...newPlayer(),x:d.x,y:d.y-4,z:d.z,inventory:['grapple'],equipped:'grapple'},target={droneId:d.id,offset:{x:0,y:-.29,z:0}};
  assert.ok(canGrapple(p,target));for(let i=0;i<100;i++)step(p,{x:0,z:0,use:true,target},1/120);
  assert.ok(p.grapple);const expected=resolveAnchor(target,p.time);assert.ok(Math.abs(expected.x-p.grapple.x)<1e-8);assert.equal(p.hooks,1);
- const vx=p.vx,vz=p.vz;step(p,{x:0,z:0,use:false},1/120);assert.equal(p.grapple,null);assert.equal(p.vx,vx);assert.equal(p.vz,vz);
+ const vx=p.vx,vz=p.vz;step(p,{x:0,z:0,use:false},1/120);assert.equal(p.grapple,null);assert.ok(Math.hypot(p.vx,p.vz)>=Math.hypot(vx,vz));assert.equal(p.slingshots,1);
 });

@@ -1,5 +1,5 @@
 // Procedural audio: no downloads or external assets; only starts after Play.
-const presets={hook:[950,260,.12,'square'],lunge:[180,65,.18,'sawtooth'],throw:[480,130,.14,'triangle'],hammer:[110,35,.35,'sawtooth'],warning:[620,900,.16,'sine'],shot:[430,95,.12,'square'],hit:[1400,450,.08,'triangle'],weak:[1900,900,.14,'triangle'],destroy:[150,35,.32,'sawtooth'],jump:[360,700,.12,'sine'],land:[100,45,.1,'triangle'],hurt:[190,75,.2,'square']};
+const presets={recall:[350,1200,.22,'sine'],hook:[950,260,.12,'square'],lunge:[180,65,.18,'sawtooth'],throw:[480,130,.14,'triangle'],hammer:[110,35,.35,'sawtooth'],warning:[620,900,.16,'sine'],shot:[430,95,.12,'square'],hit:[1400,450,.08,'triangle'],weak:[1900,900,.14,'triangle'],destroy:[150,35,.32,'sawtooth'],jump:[360,700,.12,'sine'],land:[100,45,.1,'triangle'],hurt:[190,75,.2,'square']};
 export function gameAudio(){
  let ctx=null,master=null,muted=false,paused=true,voices=0;const last=new Map();
  function wake(){try{if(!ctx){const Audio=globalThis.AudioContext||globalThis.webkitAudioContext;if(!Audio)return;ctx=new Audio();master=ctx.createGain();master.gain.value=muted?0:.18;master.connect(ctx.destination);}ctx.resume().catch(()=>{});}catch{}}

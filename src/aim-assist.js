@@ -5,7 +5,7 @@ export function assistedTarget(player,origin,direction,direct){
  if(direct&&canGrapple(player,direct))return direct;
  const cone=6*Math.PI/180;
  let best=null,bestScore=Infinity;
- const boxes=[...world,...droneRoutes.filter(r=>!player.deadDrones?.includes(r.id)).map(r=>({...droneAt(r.id,player.time),droneId:r.id}))];
+ const boxes=[...world,...(player.enemyTargets||[]).filter(e=>!e.dead&&e.kind!=='drone').map(e=>({...e,enemyId:e.id,w:1.6,h:1.6,d:1.6})),...droneRoutes.filter(r=>!player.deadDrones?.includes(r.id)).map(r=>({...droneAt(r.id,player.time),droneId:r.id}))];
  for(const box of boxes){
   if(Math.hypot(box.x-player.x,box.y-player.y,box.z-player.z)>20+Math.hypot(box.w,box.h,box.d)/2)continue;
   const centerDistance=(box.x-origin.x)*direction.x+(box.y-origin.y)*direction.y+(box.z-origin.z)*direction.z;
@@ -20,7 +20,7 @@ export function assistedTarget(player,origin,direction,direct){
    const score=angle+d*.002;
    if(angle>cone||score>=bestScore)continue;
    const candidate={...point,nx:axis==='x'?sign:0,ny:axis==='y'?sign:0,nz:axis==='z'?sign:0,assisted:true};
-   if(box.droneId){candidate.droneId=box.droneId;candidate.offset={x:point.x-box.x,y:point.y-box.y,z:point.z-box.z};}else candidate.surfaceId=box.id;
+   if(box.enemyId){candidate.enemyId=box.enemyId;candidate.offset={x:point.x-box.x,y:point.y-box.y,z:point.z-box.z};}else if(box.cargoId){candidate.cargoId=box.cargoId;candidate.surfaceId=box.id;candidate.offset={x:point.x-box.x,y:point.y-box.y,z:point.z-box.z};}else if(box.droneId){candidate.droneId=box.droneId;candidate.offset={x:point.x-box.x,y:point.y-box.y,z:point.z-box.z};}else candidate.surfaceId=box.id;
    if(canGrapple(player,candidate)){best=candidate;bestScore=score;}
   }
  }

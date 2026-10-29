@@ -11,6 +11,8 @@ function trim(color){
 }
 function blockStyle(w){
  const id=w.id;
+ if(w.breakable)return {body:'#12454f',accent:w.id.includes('sign')?'#ff70cf':'#7ffff5'};
+ if(w.cargoId)return {body:'#263244',accent:'#ffcf70'};
  if(id==='ground')return {body:'#111729',accent:'#164456'};
  if(id==='plaza')return {body:'#1b2339',accent:'#32eaff'};
  if(id.startsWith('tree-'))return {body:'#132d33',accent:'#38bb9e'};
@@ -23,7 +25,8 @@ function blockStyle(w){
 // Smooth, dark panels with luminous edge trim. Geometry stays identical to physics.
 export function neonBlock(w){
  const style=blockStyle(w),geometry=new THREE.BoxGeometry(w.w,w.h,w.d);
- const mesh=new THREE.Mesh(geometry,surface(style.body));
+ const body=w.breakable?surface(style.body).clone():surface(style.body);if(w.breakable){body.transparent=true;body.opacity=.4;body.depthWrite=false;}
+ const mesh=new THREE.Mesh(geometry,body);
  mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geometry),trim(style.accent)));
  return mesh;
 }

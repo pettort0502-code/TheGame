@@ -105,7 +105,7 @@ The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams
 
 Only two items fit in your inventory. **G** or the **Throw item** button launches the equipped item toward the crosshair, frees one slot, and equips your other item. Thrown gear damages enemies on impact, collides with walls, and falls into a visible pickup that can be collected after landing; a full inventory cannot take another pickup. Right-click/E switches your two carried items. Reset restores the original pickups; Home/falling keeps your loadout and thrown-item locations.
 
-Throws launch at 28m/s with a small upward arc, inherit some player momentum, and use swept collision against enemies and terrain. Each throw can destroy one enemy, then falls to a recoverable pickup. In-flight items cannot be collected. Items thrown off the map return to their original pickup pedestal.
+Throws launch at 28m/s with a small upward arc, inherit some player momentum, and use swept collision against enemies and terrain. Each outgoing throw damages one enemy, then falls to a recoverable pickup. Recalled items can damage multiple enemies on the return path. In-flight items cannot be collected. Items thrown off the map return to their original pickup pedestal.
 
 
 ## Sound, combat feedback and vertical districts
@@ -117,3 +117,16 @@ Enemies display amber charging lines, brighter charging lights and an incoming-f
 Thrown spears travel point-first at 38m/s with 4m/s² gravity and no upward launch boost. Grapple guns and hammers use a heavier 28m/s, 20m/s² arc with a small upward boost. All remain recoverable after landing.
 
 Four vertical districts (Skyforge, Neon Ascent, Cloud Gantry and Reactor Highrise) add paired 48m towers, alternating ledges every 8m, bridges at 12/28/44m, 52m crown decks and grapple anchors near 60m. Entry steps and launch pads lead into each climb. The 20m grapple range remains unchanged; intermediate ledges and anchors support climbing in stages.
+
+
+## Flow movement, scenery, cargo and recall
+
+- **Hold V** beside a wall while airborne and moving at 6m/s or faster to grind along it. The grind preserves horizontal speed, follows adjacent wall faces, slows falling, and lasts up to 2.5 seconds per airborne stretch. Space wall-kicks away. Touch has a Grind button.
+- **Hold grapple, then release:** charge builds over 1.4 seconds. Releases after 0.45 seconds add a proportional slingshot burst, up to 16m/s, along your movement direction (or aim while still). Quick releases keep the normal swing behavior. Switching, throwing, pausing, and resetting cancel charge without launching.
+- **Hook ground enemies:** ordinary walkers reel toward you and stop about 2m away. Armored walkers and turrets act as swing anchors. Drone grappling remains available. All targets obey 20m range and line of sight; destroying a hooked target releases it.
+- **Moving cargo:** three solid flying transports circle the northern cargo lane, reactor and Skyforge. They carry standing players, transfer their movement to jumps, and support moving grapple anchors. Each has a turret guard you can defeat while riding.
+- **Breakable scenery:** translucent glass panels, neon signs and three glass skybridges shatter under fast movement above 18m/s, spear attacks, hammer blasts or thrown items. Collision disappears when shattered. Throws continue through broken glass. Home/reset restores scenery.
+- **B / Recall:** call back thrown or landed equipment. It flies toward you and damages enemies along the way, with one hit per enemy per recall. Walls block returns, leaving the item recoverable; glass can shatter. Returns reserve available inventory slots, so the two-item limit remains. A Recall button supports touch controls.
+- **Momentum-powered attacks:** earned horizontal speed above 18m/s strengthens spear lunges and throws, up to 2.5× damage. Fast hammer slams gain damage and widen from 7m to a maximum 12m radius. Armor still rewards precise weak-point hits.
+
+`src/flow.test.js` verifies wall grinds/kicks, slingshot release, moving deck carry/jumps/anchors, cargo combat, enemy grappling, recall damage and cover, scenery destruction and attack scaling.

@@ -128,3 +128,16 @@ for(const [index,cx,cz] of [[0,78,80],[1,-78,-80],[2,0,-132],[3,126,24]]){
  block(`sky-${index}-entry`,cx,0,cz+10,5,2,5,'#c5b397',zone);
  pad(`sky-${index}-launch`,cx,cz+18,0,-1);
 }
+
+export const cargoRoutes=[
+ {id:'cargo-river',x:0,y:4,z:-42,rx:20,rz:5,rate:.16,phase:0},
+ {id:'cargo-reactor',x:108,y:14,z:0,rx:8,rz:12,rate:.13,phase:1},
+ {id:'cargo-skyforge',x:78,y:32,z:80,rx:22,rz:10,rate:.12,phase:2},
+];
+for(const r of cargoRoutes){const w=block(r.id,r.x,r.y-.4,r.z,9,.8,5,'#466774','Cargo lanes');w.cargoId=r.id;}
+for(const [i,x,z] of [[0,-10,7],[1,35,5],[2,-36,-16],[3,70,60],[4,-70,-60],[5,115,-30]]){
+ const glass=block(`glass-panel-${i}`,x,0,z,.2,3.2,6,'#44dcdd','Breakable glass');glass.breakable=true;
+ const sign=block(`neon-sign-${i}`,x+4,2,z,3,1.5,.2,'#ff70cf','Breakable signs');sign.breakable=true;
+}
+for(const [i,cx,cz] of [[0,78,80],[1,-78,-80],[2,126,24]]){const bridge=block(`glass-bridge-${i}`,cx,20,cz,22,.3,3,'#44dcdd','Glass skybridge');bridge.breakable=true;}
+export const breakableSurfaces=world.filter(w=>w.breakable);

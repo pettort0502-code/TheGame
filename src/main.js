@@ -10,15 +10,15 @@ import {MAP_SIZE} from './world.js';
 import {droneRoutes,droneAt} from './drones.js';
 import {movementEffects} from './movement-effects.js';
 import {motionPose} from './motion.js';
-import {world,SPAWN,boostPads,itemPickups,hasEquipped,cycleItem,dropItem,SPEAR_COOLDOWN,GRAPPLE_RANGE,canGrapple,newPlayer,step} from './physics.js';
+import {world,SPAWN,boostPads,itemPickups,hasEquipped,cycleItem,dropItem,recallItems,releaseGrapple,SPEAR_COOLDOWN,GRAPPLE_RANGE,canGrapple,newPlayer,step} from './physics.js';
 
 document.querySelector('#app').innerHTML=`
-<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">After-dark momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>G</kbd> throw · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="sound">Sound on · U</button><button id="drop">Throw item · G</button><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
+<div id="hud"><div class="top"><div><div class="brand">skybound<span>·</span></div><div class="eyebrow">After-dark momentum playground</div></div><div class="stats"><div class="stat">HOOKS<strong id="hooks">0</strong></div><div class="stat">WALL JUMPS<strong id="jumps">0</strong></div><div class="stat">SPEED<strong id="speed">0.0</strong></div></div></div><div class="bottom"><div><div class="label" id="zone">SANDBOX / CENTRAL PLAZA</div><div class="title">Find your flow.</div><div class="hint keyboard"><kbd>W A S D</kbd> move · mouse to look · <kbd>Space</kbd> jump / double jump / wall kick<br><kbd>Left click / Q</kbd> use · <kbd>Right click / E</kbd> switch · <kbd>G</kbd> throw · <kbd>B</kbd> recall · <kbd>V</kbd> grind · <kbd>Shift / C</kbd> slide · <kbd>Esc</kbd> menu</div><div class="hint" id="progress">Fast feet. Big jumps. Your own route.</div></div><div class="actions"><button id="sound">Sound on · U</button><button id="recall">Recall · B</button><button id="drop">Throw item · G</button><button id="home">Back to plaza</button><button id="pause">Pause</button><button id="restart">Reset sandbox</button></div></div></div>
 <div id="drone-markers"></div><div id="landing-flash"></div><div id="damage-flash"></div><div id="hit-marker" hidden>×</div><div id="threat-warning" hidden>INCOMING FIRE</div><div id="health">SHIELD · 3 / 3</div>
 <div id="inventory" aria-live="polite"><span id="item-grapple">Grapple · find pickup</span><span id="item-spear">Spear · find pickup</span><span id="item-hammer">Hammer · find pickup</span><span id="slots">0 / 2 slots</span></div>
 <div id="ability"><span class="ability-dot"></span><span id="ability-text">HOOK · 20m reach</span></div><div id="notice" role="status"></div>
 <div id="reticle" aria-hidden="true"><span>+</span></div>
-<div id="touch"><div class="dpad"><button data-key="KeyW" aria-label="Forward">↑</button><button data-key="KeyA" aria-label="Left">←</button><button data-key="KeyS" aria-label="Back">↓</button><button data-key="KeyD" aria-label="Right">→</button></div><div class="touch-actions"><button id="look-left" aria-label="Turn camera left">↶</button><button id="look-right" aria-label="Turn camera right">↷</button><button id="slide" data-key="KeyC">Slide</button><button id="switch-item">Switch</button><button id="hook" data-key="KeyQ">Use</button><button id="jump" data-key="Space">Jump</button></div></div>
+<div id="touch"><div class="dpad"><button data-key="KeyW" aria-label="Forward">↑</button><button data-key="KeyA" aria-label="Left">←</button><button data-key="KeyS" aria-label="Back">↓</button><button data-key="KeyD" aria-label="Right">→</button></div><div class="touch-actions"><button id="look-left" aria-label="Turn camera left">↶</button><button id="look-right" aria-label="Turn camera right">↷</button><button id="grind" data-key="KeyV">Grind</button><button id="slide" data-key="KeyC">Slide</button><button id="switch-item">Switch</button><button id="hook" data-key="KeyQ">Use</button><button id="jump" data-key="Space">Jump</button></div></div>
 <div id="menu"><div class="menu-card"><div class="label">SKYBOUND / FREERUN SANDBOX</div><h1 id="menu-title">Find your flow.</h1><p>First-person movement. Double jumps. Wall kicks.<br>Choose two: grapple, spear, or shockwave hammer beside the plaza.<br>Right-click to switch. Left-click to use your item.<br>Explore outward for new districts and projectile sentries.<br>Spear lunges and hammer shockwaves destroy enemies.<br>G throws your equipped item at enemies. Three shield hits return you to the plaza.</p><button id="play">Lock mouse &amp; play</button><p id="capture-error" role="status" hidden></p><p class="menu-help keyboard">Click to capture the mouse for unlimited turning. Escape opens this menu.</p><p class="menu-help touch-help">Drag the world to look. Use the buttons to move and jump.</p><div class="menu-actions"><button id="menu-home">Back to plaza</button><button id="menu-reset">Reset sandbox</button></div></div></div>`;
 const $=id=>document.getElementById(id);
 const scene=new THREE.Scene();scene.background=new THREE.Color('#080b1b');scene.fog=new THREE.Fog('#080b1b',110,250);
@@ -33,7 +33,7 @@ const sun=new THREE.DirectionalLight('#a9bfff',2.1);sun.castShadow=true;sun.shad
 const mat=color=>new THREE.MeshStandardMaterial({color,roughness:.85});
 const materials=new Map();function material(color){if(!materials.has(color))materials.set(color,equipmentMaterial(color)||mat(color));return materials.get(color);}
 // Render the same solid boxes used by movement and camera collisions.
-const surfaces=world.map(w=>{const mesh=neonBlock(w);mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;scene.add(mesh);return mesh;});
+const surfaces=world.map(w=>{const mesh=neonBlock(w);mesh.position.set(w.x,w.y,w.z);mesh.castShadow=w.id!=='ground';mesh.receiveShadow=true;mesh.userData.surface=w;if(w.cargoId){for(const z of [-2.45,2.45]){const stripe=new THREE.Mesh(new THREE.BoxGeometry(8,.12,.06),new THREE.MeshBasicMaterial({color:'#ffcf70'}));stripe.position.set(0,.26,z);mesh.add(stripe);}}scene.add(mesh);return mesh;});
 const droneMeshes=droneRoutes.map(route=>{
  const group=new THREE.Group();
  const body=new THREE.Mesh(new THREE.BoxGeometry(1.2,.5,1.2),new THREE.MeshStandardMaterial({color:'#193953',emissive:'#0d536b',emissiveIntensity:.9,metalness:.4,roughness:.45}));body.userData.droneId=route.id;group.add(body);
@@ -115,11 +115,11 @@ const enemies=enemyVisuals(scene,combat);
 let seenLandings=0,seenShockwaves=0;
 let player=newPlayer(),keys=new Set(),paused=true,jumpQueued=false,shotTarget=null,noticeTimeout,accumulator=0;
 let yaw=0,pitch=0,turn=0,touchLook=null,lookActive=false;
-let lockPending=false,visualTime=0,flipAt=-100,hookAt=-100,seenFlips=0,seenHooks=0,seenLunges=0,lungeAt=-100,seenCollected=0;
+let lockPending=false,visualTime=0,flipAt=-100,hookAt=-100,seenFlips=0,seenHooks=0,seenLunges=0,seenSlingshots=0,wasGrinding=false,lungeAt=-100,seenCollected=0;
 const aimRay=new THREE.Raycaster();
 const coarse=matchMedia('(pointer:coarse)').matches;
 function notice(text){$('notice').textContent=text;$('notice').style.opacity=1;clearTimeout(noticeTimeout);noticeTimeout=setTimeout(()=>$('notice').style.opacity=0,2200);}
-function directAimPoint(){syncDrones();aimRay.setFromCamera(new THREE.Vector2(0,0),camera);const hit=aimRay.intersectObjects([...surfaces.filter(m=>!m.userData.surface.destroyed),...droneMeshes.filter(d=>!player.deadDrones.includes(d.route.id)).map(d=>d.body)],false)[0];if(!hit)return null;const p=hit.point.clone().addScaledVector(hit.face.normal,.04);if(hit.object.userData.droneId){const d=droneAt(hit.object.userData.droneId,player.time);return {x:p.x,y:p.y,z:p.z,droneId:d.id,offset:{x:p.x-d.x,y:p.y-d.y,z:p.z-d.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}return {x:p.x,y:p.y,z:p.z,surfaceId:hit.object.userData.surface.id,nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}
+function directAimPoint(){syncDrones();aimRay.setFromCamera(new THREE.Vector2(0,0),camera);const hit=aimRay.intersectObjects([...surfaces.filter(m=>!m.userData.surface.destroyed),...droneMeshes.filter(d=>!player.deadDrones.includes(d.route.id)).map(d=>d.body),...enemies.targets.filter(m=>!m.userData.dead)],false)[0];if(!hit)return null;const p=hit.point.clone().addScaledVector(hit.face.normal,.04);if(hit.object.userData.enemyId){const e=combat.sentries.find(e=>e.id===hit.object.userData.enemyId);return {x:p.x,y:p.y,z:p.z,enemyId:e.id,offset:{x:p.x-e.x,y:p.y-e.y,z:p.z-e.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}if(hit.object.userData.surface?.cargoId){const w=hit.object.userData.surface;return {x:p.x,y:p.y,z:p.z,cargoId:w.id,surfaceId:w.id,offset:{x:p.x-w.x,y:p.y-w.y,z:p.z-w.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}if(hit.object.userData.droneId){const d=droneAt(hit.object.userData.droneId,player.time);return {x:p.x,y:p.y,z:p.z,droneId:d.id,offset:{x:p.x-d.x,y:p.y-d.y,z:p.z-d.z},nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}return {x:p.x,y:p.y,z:p.z,surfaceId:hit.object.userData.surface.id,nx:hit.face.normal.x,ny:hit.face.normal.y,nz:hit.face.normal.z};}
 function aimPoint(){
  const direct=directAimPoint();
  if(!hasEquipped(player,'grapple'))return direct;
@@ -139,11 +139,11 @@ function switchEquipment(){
 }
 function releaseItemUse(key){
  keys.delete(key);
- if(!keys.has('Mouse0')&&!keys.has('KeyQ')){player.useHeld=false;player.requireRelease=false;player.grappleHeld=false;player.grapple=null;}
+ if(!keys.has('Mouse0')&&!keys.has('KeyQ')){player.useHeld=false;player.requireRelease=false;player.grappleHeld=false;releaseGrapple(player);}
 }
-function clearInput(){spearQueued=false;player.spearBuffer=0;player.hammerBuffer=0;keys.clear();jumpQueued=false;shotTarget=null;player.grapple=null;player.grappleHeld=false;player.useHeld=false;player.requireRelease=false;turn=0;touchLook=null;}
-function returnHome(){combat=newCombat();combat.falls=player.falls;combat.seenShockwaves=player.shockwaves;player.deadDrones=[];movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,spearBuffer:0,lungeTime:0,hammerCooldown:0,hammerBuffer:0,slamming:false});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
-function reset(){seenLandings=0;seenShockwaves=0;player=newPlayer();accumulator=0;returnHome();$('hooks').textContent='0';$('jumps').textContent='0';$('speed').textContent='0.0';seenFlips=0;seenHooks=0;seenLunges=0;lungeAt=-100;seenCollected=0;flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
+function clearInput(){player.grappleCharge=0;player.grinding=false;spearQueued=false;player.spearBuffer=0;player.hammerBuffer=0;keys.clear();jumpQueued=false;shotTarget=null;player.grapple=null;player.grappleHeld=false;player.useHeld=false;player.requireRelease=false;turn=0;touchLook=null;}
+function returnHome(){combat=newCombat();combat.falls=player.falls;combat.seenShockwaves=player.shockwaves;player.deadDrones=[];player.enemyTargets=combat.sentries;player.riding=null;player.grindTime=0;movementFx.clear();Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallCooldown:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,boostTime:0,padId:null,reelSpeed:0,spearCooldown:0,spearBuffer:0,lungeTime:0,hammerCooldown:0,hammerBuffer:0,slamming:false});clearInput();yaw=0;pitch=0;camera.position.set(SPAWN.x,SPAWN.y+.43,SPAWN.z);flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
+function reset(){seenLandings=0;seenShockwaves=0;player=newPlayer();accumulator=0;returnHome();$('hooks').textContent='0';$('jumps').textContent='0';$('speed').textContent='0.0';seenFlips=0;seenHooks=0;seenLunges=0;seenSlingshots=0;wasGrinding=false;lungeAt=-100;seenCollected=0;flipAt=hookAt=-100;effects.forEach(e=>{e.life=0;e.mesh.visible=false;});}
 function setPaused(value){
  paused=value;audio.pause(value);clearInput();$('menu').hidden=!value;$('pause').textContent=value?'Resume':'Pause';$('menu-title').textContent=value?'Ready for another run?':'Find your flow.';
  if(value){lookActive=false;if(document.pointerLockElement)document.exitPointerLock();}
@@ -171,17 +171,20 @@ $('play').onclick=play;$('pause').onclick=()=>paused?play():setPaused(true);
 function dropEquipment(){if(paused)return;updateCamera(0);const name=dropItem(player,camera.getWorldDirection(new THREE.Vector3()));spearQueued=false;shotTarget=null;if(name)audio.play('throw');if(name)notice(`${name} thrown · one slot available. Retrieve it after it lands.`);}
 function toggleSound(){const muted=audio.toggle();$('sound').textContent=muted?'Sound off · U':'Sound on · U';$('sound').setAttribute('aria-pressed',String(muted));}
 $('sound').onclick=toggleSound;
+function recallEquipment(){if(paused)return;const count=recallItems(player);if(count){audio.play('recall');notice(`Recalling ${count} item${count>1?'s':''} · clear a path back.`);}else notice(player.inventory.length===2?'Two slots full · throw an item to make room.':'No thrown gear available to recall.');}
+$('recall').onclick=recallEquipment;
 $('drop').onclick=dropEquipment;
 $('home').onclick=()=>{returnHome();notice('Back at the plaza. Your counters are kept.');};$('restart').onclick=reset;
 $('menu-home').onclick=()=>{returnHome();play();};$('menu-reset').onclick=()=>{reset();play();};
 addEventListener('keydown',e=>{
- if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyE','KeyC','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();
+ if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight','KeyQ','KeyE','KeyV','KeyB','KeyC','ShiftLeft','ShiftRight'].includes(e.code))e.preventDefault();
  if(e.code==='Escape'&&!e.repeat){if(!paused)setPaused(true);return;}
  if(paused)return;
  if(e.code==='KeyR'&&!e.repeat)reset();
  if(e.code==='KeyE'&&!e.repeat)switchEquipment();
  if(e.code==='KeyG'&&!e.repeat)dropEquipment();
  if(e.code==='KeyU'&&!e.repeat)toggleSound();
+ if(e.code==='KeyB'&&!e.repeat)recallEquipment();
  if(e.code==='Space'&&!keys.has('Space')&&!e.repeat)jumpQueued=true;
  if(e.code==='KeyQ'&&!keys.has('KeyQ')&&!e.repeat)shoot();
  keys.add(e.code);
@@ -238,8 +241,9 @@ const movementFx=movementEffects(scene,camera);
 const clock=new THREE.Clock();
 function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDelta(),.05);
  if(!paused){accumulator+=dt;while(accumulator>=1/120){
+  player.enemyTargets=combat.sentries;
   const before={x:player.x,y:player.y,z:player.z,grounded:player.grounded};
-  step(player,{...direction(),jump:jumpQueued,use:keys.has('Mouse0')||keys.has('KeyQ'),target:shotTarget,spearPressed:spearQueued,facingX:-Math.sin(yaw)*Math.cos(pitch),facingY:-Math.sin(pitch),facingZ:-Math.cos(yaw)*Math.cos(pitch),slide:keys.has('KeyC')||keys.has('ShiftLeft')||keys.has('ShiftRight')},1/120);
+  step(player,{...direction(),jump:jumpQueued,use:keys.has('Mouse0')||keys.has('KeyQ'),target:shotTarget,grind:keys.has('KeyV'),spearPressed:spearQueued,facingX:-Math.sin(yaw)*Math.cos(pitch),facingY:-Math.sin(pitch),facingZ:-Math.cos(yaw)*Math.cos(pitch),slide:keys.has('KeyC')||keys.has('ShiftLeft')||keys.has('ShiftRight')},1/120);
   if(before.grounded&&!player.grounded&&player.vy>0&&!player.slamming)audio.play('jump');
   const defeated=tickCombat(combat,player,before,1/120);
   for(const event of combat.events)audio.play(event.type,event,player);
@@ -255,7 +259,9 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   if(player.doubleJumps!==seenFlips){seenFlips=player.doubleJumps;flipAt=visualTime;audio.play('jump');burst(true);}
   if(player.collectedPickups.length!==seenCollected){seenCollected=player.collectedPickups.length;notice(player.inventory.length===2?'Two slots full · right-click switches · G throws an item':'Item collected · left-click to use');}
   if(player.lunges!==seenLunges){seenLunges=player.lunges;lungeAt=visualTime;audio.play('lunge');burst(false);}
-  if(player.shockwaves!==seenShockwaves){seenShockwaves=player.shockwaves;audio.play('hammer');burst(true);notice('SHOCKWAVE · 7m blast');}
+  if(player.shockwaves!==seenShockwaves){seenShockwaves=player.shockwaves;audio.play('hammer');burst(true);notice(`SHOCKWAVE · ${player.shockwave.radius.toFixed(0)}m blast`);}
+  if(player.slingshots!==seenSlingshots){seenSlingshots=player.slingshots;audio.play('lunge');notice('SLINGSHOT · momentum released');}
+  if(player.grinding&&!wasGrinding)audio.play('hook');wasGrinding=player.grinding;
   if(player.hooks!==seenHooks){seenHooks=player.hooks;hookAt=visualTime;audio.play('hook');}
   effects.forEach(e=>{if(e.life<=0)return;e.life=Math.max(0,e.life-dt);const p=1-e.life/e.max;e.mesh.material.opacity=(1-p)*(e.ring?.8:.5);e.mesh.scale.setScalar(e.ring?1+p*3:1-p*.5);e.mesh.visible=e.life>0;});
  }
@@ -269,7 +275,7 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
   hand.rotation.set(-.35-pose.tuck*1.5,0,-side*(.15+pose.tuck*.55));
  });
  updateCamera(dt);
- surfaces.forEach(m=>m.visible=!m.userData.surface.destroyed);
+ surfaces.forEach(m=>{const w=m.userData.surface;m.visible=!w.destroyed;if(w.cargoId){m.position.set(w.x,w.y,w.z);m.updateMatrixWorld(true);}});
  enemies.tick(combat,player,player.time);
  $('hit-marker').hidden=combat.hitMarker<=0;
  const threats=combat.sentries.filter(e=>!e.dead&&e.charge>0).sort((a,b)=>b.charge-a.charge);$('threat-warning').hidden=threats.length===0;
@@ -283,23 +289,23 @@ function animate(){requestAnimationFrame(animate);const dt=Math.min(clock.getDel
  const thrust=Math.max(0,1-(visualTime-lungeAt)/.28);spear.position.z=-.03-thrust*.45;spear.rotation.x=.35-thrust*.15;
  pickupMeshes.forEach(({item,group,ring,label})=>{const available=!player.collectedPickups.includes(item.id);group.visible=ring.visible=label.visible=available;const pos=player.pickupPositions[item.id]||item;const thrown=player.thrownItems.find(t=>t.id===item.id);group.position.set(pos.x,pos.y+(thrown?0:Math.sin(visualTime*2)*.09),pos.z);if(thrown){if(item.type==='spear')group.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,-1),new THREE.Vector3(thrown.vx,thrown.vy,thrown.vz).normalize());else group.rotation.set(visualTime*12,visualTime*3,0);ring.visible=label.visible=false;}else group.rotation.set(0,visualTime*.8,0);ring.position.set(pos.x,pos.y-.8,pos.z);label.position.set(pos.x,pos.y+1.1,pos.z);});
  for(const type of ['grapple','spear','hammer']){const el=$(`item-${type}`),owned=player.inventory.includes(type);el.classList.toggle('owned',owned);el.classList.toggle('equipped',player.equipped===type);el.textContent=`${type==='grapple'?'Grapple':type==='spear'?'Spear':'Hammer'} · ${owned?(player.equipped===type?'equipped':'right-click to switch'):'find pickup'}`;}
- $('slots').textContent=`${player.inventory.length} / 2 slots · G to throw`;
+ $('slots').textContent=`${player.inventory.length} / 2 slots · G throw · B recall`;
  $('hook').textContent=player.equipped==='spear'?'Lunge':player.equipped==='hammer'?'Slam':'Use';
  const target=aimPoint(),ready=hasEquipped(player,'grapple')&&canGrapple(player,target);
- $('ability-text').textContent=!player.equipped?'NO ITEM · collect the pickups beside the plaza':player.equipped==='hammer'?(player.slamming?'HAMMER SLAM':player.hammerCooldown>0?`HAMMER RECHARGING · ${player.hammerCooldown.toFixed(1)}s`:'HAMMER READY · click to slam + bounce'):player.equipped==='spear'?(player.lungeTime>0?'SPEAR LUNGE':player.spearCooldown>0?`SPEAR RECHARGING · ${player.spearCooldown.toFixed(1)}s`:'SPEAR READY · click to lunge'):player.slideTime>0?'SLIDING · jump to launch':player.boostTime>0&&!player.grapple?'SPEED BOOST · slide to keep your flow':player.grapple?`${player.grapple.droneId?'DRONE SWING':'SWINGING'} + REELING · ${player.ropeLength.toFixed(1)}m rope · release to fly`:ready?target?.assisted?'ASSIST LOCK · hold click / Q':target?.droneId?'DRONE READY · hold click / Q':'HOOK READY · hold click / Q · 20m':target?'OUT OF REACH OR BLOCKED · 20m':'Aim at a surface · 20m reach';
+ $('ability-text').textContent=!player.equipped?'NO ITEM · collect the pickups beside the plaza':player.grinding?'WALL GRIND · V held · Space to kick off':player.equipped==='hammer'?(player.slamming?'HAMMER SLAM':player.hammerCooldown>0?`HAMMER RECHARGING · ${player.hammerCooldown.toFixed(1)}s`:'HAMMER READY · click to slam + bounce'):player.equipped==='spear'?(player.lungeTime>0?`SPEAR LUNGE · ${player.spearPower.toFixed(1)}× power`:player.spearCooldown>0?`SPEAR RECHARGING · ${player.spearCooldown.toFixed(1)}s`:'SPEAR READY · click to lunge'):player.slideTime>0?'SLIDING · jump to launch':player.boostTime>0&&!player.grapple?'SPEED BOOST · slide to keep your flow':player.grapple?player.grapple.lightEnemy?'ENEMY REEL · pulling light enemy toward you':`${player.grapple.enemyId?'ENEMY SWING':player.grapple.droneId?'DRONE SWING':'SWINGING'} + REELING · ${player.ropeLength.toFixed(1)}m · CHARGE ${Math.round(player.grappleCharge/1.4*100)}% · release to launch`:ready?target?.assisted?'ASSIST LOCK · hold click / Q':target?.enemyId?'ENEMY HOOK READY · hold click / Q':target?.droneId?'DRONE READY · hold click / Q':'HOOK READY · hold click / Q · 20m':target?'OUT OF REACH OR BLOCKED · 20m':'Aim at a surface · 20m reach';
  $('ability').classList.toggle('ready',ready||Boolean(player.grapple));
  $('reticle').classList.toggle('assisted',ready&&Boolean(target?.assisted));
  $('reticle').classList.toggle('in-range',ready);$('reticle').classList.toggle('latched',Boolean(player.grapple));
  targetHalo.visible=ready&&!player.grapple;
  if(targetHalo.visible){targetHalo.position.set(target.x,target.y,target.z);targetHalo.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),new THREE.Vector3(target.nx,target.ny,target.nz));targetHalo.scale.setScalar(1+Math.sin(visualTime*5)*.12);}
- document.body.classList.toggle('sliding',player.slideTime>0);
+ document.body.classList.toggle('sliding',player.slideTime>0);document.body.classList.toggle('grinding',player.grinding);
 $('reticle').style.color=ready||player.grapple?'#1ab2bd':'#ffffffaa';
  rope.visible=latch.visible=Boolean(player.grapple);
  if(player.grapple){const origin=muzzle.getWorldPosition(new THREE.Vector3()),a=player.grapple,points=ropeGeometry.attributes.position;points.setXYZ(0,origin.x,origin.y,origin.z);points.setXYZ(1,a.x,a.y,a.z);points.needsUpdate=true;latch.position.set(a.x,a.y,a.z);}
  const nearby=world.filter(w=>w.id!=='ground'&&Math.abs(player.x-w.x)<w.w/2+4&&Math.abs(player.z-w.z)<w.d/2+4).sort((a,b)=>Math.hypot(a.x-player.x,a.z-player.z)-Math.hypot(b.x-player.x,b.z-player.z))[0];
  $('zone').textContent=`SANDBOX / ${(nearby?.zone||'Open meadow').toUpperCase()}`;
  $('hooks').textContent=player.hooks;$('jumps').textContent=player.wallJumps;$('speed').textContent=Math.hypot(player.vx,player.vz).toFixed(1);
- $('progress').textContent=player.crouched?'Stay low through the slide tunnels. Release Shift/C to stand when clear.':player.wallNormal&&!player.grounded?'Press Space to kick off the wall and refresh your double jump.':!player.grounded&&player.airJump?'One more jump available. Catch a high surface to swing.':'Cyan arrows boost speed. Shift/C slides. Head outward to find new districts.';
+ $('progress').textContent=player.crouched?'Stay low through the slide tunnels. Release Shift/C to stand when clear.':player.wallNormal&&!player.grounded?'Press Space to kick off the wall and refresh your double jump.':!player.grounded&&player.airJump?'One more jump available. Catch a high surface to swing.':'V wall grinds. B recalls gear. Hold grapple to charge a slingshot. Cyan glass breaks at speed.';
  sun.position.set(player.x-15,player.y+30,player.z+12);sun.target.position.set(player.x,player.y,player.z);renderer.render(scene,camera);
 }
 reset();animate();
