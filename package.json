@@ -10,7 +10,8 @@
     "test": "node --test",
     "test:browser": "node scripts/smoke.mjs",
     "build:download": "npm run build && node scripts/package-game.mjs",
-    "build:site": "npm run build && node scripts/package-game.mjs docs/index.html && node scripts/package-game.mjs Play-Skybound.html"
+    "build:site": "npm run build && node scripts/package-game.mjs docs/index.html && node scripts/package-game.mjs Play-Skybound.html",
+    "test:level": "node scripts/level-smoke.mjs"
   },
   "dependencies": {
     "three": "^0.180.0"

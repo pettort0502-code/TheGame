@@ -1,14 +1,14 @@
 import {chromium} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-async function load(page){if(process.env.GAME_FILE)await page.setContent(readFileSync(process.env.GAME_FILE,'utf8'));else await page.goto(process.env.GAME_URL||'http://localhost:5173/');await page.waitForSelector('canvas');}
+async function load(page){await page.evaluate(()=>location.hash='sandbox');if(process.env.GAME_FILE)await page.setContent(readFileSync(process.env.GAME_FILE,'utf8'));else await page.goto((process.env.GAME_URL||'http://localhost:5173/')+'#sandbox');await page.waitForSelector('canvas');}
 async function text(page,id,match){await page.waitForFunction(({id,source})=>new RegExp(source).test(document.getElementById(id).textContent),{id,source:match.source});}
 async function home(page){await page.evaluate(()=>document.getElementById('home').click());await text(page,'zone',/CENTRAL PLAZA/);await page.waitForTimeout(200);}
 async function collect(page,type){await home(page);await page.keyboard.down('KeyW');await page.keyboard.down(type==='grapple'?'KeyA':'KeyD');try{await page.waitForSelector(`#item-${type}.owned`);}finally{await page.keyboard.up('KeyW');await page.keyboard.up(type==='grapple'?'KeyA':'KeyD');}await home(page);}
 const browser=await chromium.launch({executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',headless:true,args:['--no-sandbox','--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader']});
 try{
  const page=await browser.newPage({viewport:{width:1440,height:900}}),errors=[];page.on('pageerror',e=>errors.push(e.message));await load(page);
- assert.ok(await page.locator('canvas').evaluate(c=>!!c.getContext('webgl2')));assert.equal(await page.locator('.drone-marker').count(),10);assert.match(await page.locator('#health').textContent(),/3 \/ 3/);assert.equal(await page.locator('#dash').count(),0);
+ assert.ok(await page.locator('canvas').evaluate(c=>!!c.getContext('webgl2')));assert.equal(await page.locator('.drone-marker').count(),10);assert.equal(await page.locator('#health').count(),0);assert.match(await page.locator('#run-status').textContent(),/HITS/);assert.equal(await page.locator('#dash').count(),0);
  await page.locator('#play').click();await page.waitForFunction(()=>document.pointerLockElement?.tagName==='CANVAS');await text(page,'ability-text',/^NO ITEM/);await page.keyboard.press('KeyU');assert.match(await page.locator('#sound').textContent(),/Sound off/);await page.keyboard.press('KeyU');assert.match(await page.locator('#sound').textContent(),/Sound on/);
  await page.mouse.down();await page.waitForTimeout(200);await page.mouse.up();assert.equal(await page.locator('#hooks').textContent(),'0');assert.equal(await page.locator('#item-grapple').evaluate(e=>e.classList.contains('owned')),false);
  await page.screenshot({path:'/tmp/skybound-pickups.png'});

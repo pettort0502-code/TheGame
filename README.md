@@ -1,5 +1,14 @@
 # Skybound: The Swing Playground
 
+The default game is **Level 01: Blackout Spire**, an authored action-platforming level targeting roughly a ten-minute first clear. Disable eight relay encounters, climb to the reactor, then escape through the final portal. The portal completes Level 01; Level 02 is not built yet.
+
+There are nine checkpoint locations including the entry dock. Required guards must be defeated before the next relay activates. A hit or fall immediately retries the latest checkpoint: there is no shield or health pool. Retries restore the checkpoint's two-item loadout, reset the current encounter, refill its armory and grant three seconds of grace. Previous relays stay cleared. **Retry checkpoint** returns without restarting the level; **R / Restart Level 01** starts a new run. Checkpoints last for the current session. Escape pauses both the level and the final overload countdown.
+
+The level has dock infiltration, a switchback tower, a cargo interception, a glass chasm, a foundry lockdown, a high ascent, three armored reactor cores and an emergency evacuation. The escape has a two-minute overload window and orange platforms that collapse 1.2 seconds after landing; retrying restores them. Cyan floor arrows, numbered checkpoint beacons and the objective HUD guide the route. Actual playtime depends on movement skill, combat and retries; there is no mandatory ten-minute wait.
+
+The earlier mechanics-testing sandbox remains accessible by appending `#sandbox` to the game URL. The historical mechanics and sandbox notes below describe that test map; the campaign uses its own authored world and encounters.
+
+
 A first-person 3D movement sandbox made with Three.js and Vite. Explore a 180 × 180 metre sandbox with outer rooftops, a swing forest, a highline, low slide tunnels, and the original testing districts. The camera stays at the character's eye position; the smaller arms and hook gun sit low in the view.
 
 ## Download and play on Windows
@@ -90,7 +99,7 @@ Spear activation captures quick taps between physics updates and buffers clicks 
 
 ## Expanded sandbox and sentries
 
-Six outer districts add rooftops, swing beams, slide tunnels and launch routes across 97,200 square metres. Ten moving grapple drones cover the inner and outer districts. Sixteen stationary sentries in the outer districts and old outer edges fire straight neon projectiles at 18m/s within 38m, after a 0.65s windup, with two seconds between shots. Walls block targeting and shots. The plaza has a 25m safe radius. Three shield hits return you home with your inventory; hits grant one second of immunity, and shields recover after six seconds without damage, then every two seconds. Home/reset clears shots. Pause freezes combat.
+Six outer districts add rooftops, swing beams, slide tunnels and launch routes across 97,200 square metres. Ten moving grapple drones cover the inner and outer districts. Sixteen stationary sentries in the outer districts and old outer edges fire straight neon projectiles at 18m/s within 38m, after a 0.65s windup, with two seconds between shots. Walls block targeting and shots. The plaza has a 25m safe radius. A single hit returns you home with your inventory. There is no shield pool. Home/reset clears shots. Pause freezes combat.
 
 Grapple aim assistance is always active, including while stationary, with a narrow 6° acquisition cone at every movement speed. Valid direct shots take priority. Assistance only selects visible real surfaces or drone bodies within the existing 20m range; it never rotates the camera. A purple reticle outline and ASSIST LOCK status identify assisted targets.
 
@@ -99,7 +108,7 @@ Grapple aim assistance is always active, including while stationary, with a narr
 
 Lunge through enemies with the spear to destroy them. Collision uses a swept strike so fast attacks do not skip targets. Turrets, drones and ground walkers are all destructible; destroyed turret bases stop blocking movement and grappling. Destroyed drones stop shooting, disappear from aim assist and release any attached rope. Destruction creates neon bursts and increments the kill counter. Home or reset respawns enemies and clears kills.
 
-All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and twelve ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The safe plaza remains protected.
+All ten drones shoot outside the safe plaza while remaining grappleable. Sixteen turrets cover the map, and twelve ground robots patrol, chase nearby players, fire projectiles and deal contact damage. Walls stop their movement, targeting, attacks and shockwave damage. The testing sandbox’s safe plaza remains protected.
 
 The shockwave hammer pickup is behind the spawn at the plaza. Left-click/Q slams down from the air; touching down creates a 7m shockwave that destroys enemies and bounces you upward. Using it while grounded immediately blasts and bounces. It preserves horizontal momentum, refreshes the air jump, and has a 1.8s cooldown. Its held model swings during use.
 
@@ -130,3 +139,6 @@ Four vertical districts (Skyforge, Neon Ascent, Cloud Gantry and Reactor Highris
 - **Momentum-powered attacks:** earned horizontal speed above 18m/s strengthens spear lunges and throws, up to 2.5× damage. Fast hammer slams gain damage and widen from 7m to a maximum 12m radius. Armor still rewards precise weak-point hits.
 
 `src/flow.test.js` verifies wall grinds/kicks, slingshot release, moving deck carry/jumps/anchors, cargo combat, enemy grappling, recall damage and cover, scenery destruction and attack scaling.
+
+
+Campaign data and geometry live in `src/level-data.js`; `src/level-world.js` selects the authored level or legacy sandbox; `src/level-run.js` handles checkpoint, encounter, collapse, overload and portal state. `src/level-visuals.js` draws the route, checkpoint beacons and portal. `npm run test:level` checks the default campaign in Chromium, including an actual fall/retry and loadout restoration. The existing browser smoke checks the legacy sandbox with `#sandbox`.

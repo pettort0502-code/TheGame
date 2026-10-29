@@ -3,11 +3,11 @@ import {shatter} from './scenery.js';
 import {world,enemySpawns,enemyBases,groundSpawns,SPAWN,breakableSurfaces,cargoRoutes} from './world.js';
 import {droneRoutes,droneAt} from './drones.js';
 import {segmentHit,halfHeight} from './physics.js';
-export const MAX_HEALTH=3,SHOT_SPEED=18;
+export const SHOT_SPEED=18;
 export function newCombat(){
- for(const base of [...enemyBases,...breakableSurfaces]){base.destroyed=false;if(!world.includes(base))world.push(base);}
- const roster=[...enemySpawns.map(e=>({...e,kind:'turret'})),...droneRoutes.map(e=>({...droneAt(e.id,0),kind:'drone'})),...groundSpawns.map(e=>({...e,homeX:e.x,homeZ:e.z,kind:'walker',heading:0})),...cargoRoutes.map(r=>{const c=cargoAt(r.id,0);return {id:`guard-${r.id}`,x:c.x+2,y:c.y+1.5,z:c.z,kind:'turret',carrierId:r.id};})];
- return {health:MAX_HEALTH,hits:0,kills:0,seenShockwaves:0,events:[],hitMarker:0,bursts:[],invulnerable:0,quiet:0,flash:0,shots:[],sentries:roster.map((e,i)=>({...e,dead:false,hp:e.armored?2:1,lastLunge:-1,hitFlash:0,charge:0,cooldown:1+i*.17})),falls:0};
+ for(const base of [...enemyBases,...breakableSurfaces]){base.destroyed=false;base.collapseTimer=0;if(!world.includes(base))world.push(base);}
+ const roster=[...enemySpawns.map(e=>({...e,kind:'turret'})),...droneRoutes.map(e=>({...droneAt(e.id,0),kind:'drone'})),...groundSpawns.map(e=>({...e,homeX:e.x,homeZ:e.z,homeY:e.y,kind:'walker',heading:0})),...cargoRoutes.map(r=>{const c=cargoAt(r.id,0);return {id:`guard-${r.id}`,x:c.x+2,y:c.y+1.5,z:c.z,kind:'turret',carrierId:r.id,levelStage:r.levelStage,required:true};})];
+ return {hits:0,kills:0,seenShockwaves:0,events:[],hitMarker:0,bursts:[],invulnerable:0,flash:0,shots:[],sentries:roster.map((e,i)=>({...e,active:true,dead:false,hp:e.armored?2:1,lastLunge:-1,hitFlash:0,charge:0,cooldown:1+i*.17})),falls:0};
 }
 function destroy(c,e,p){
  e.dead=true;c.kills++;c.events.push({type:'destroy',x:e.x,y:e.y,z:e.z});c.bursts.push({x:e.x,y:e.y,z:e.z,life:.6});
@@ -35,8 +35,8 @@ function tickThrown(c,p,dt){
   const end={x:t.x+t.vx*dt,y:t.y+t.vy*dt,z:t.z+t.vz*dt};
   let fraction=1,hit=null,enemy=null;
   for(const w of world){const f=segmentHit(old,end,{...w,w:w.w+.3,h:w.h+.3,d:w.d+.3});if(f!==null&&f<=fraction){fraction=f;hit=w;}}
-  if(t.damaging&&hit){enemy=c.sentries.find(e=>!e.dead&&e.id===hit.id)||null;if(enemy)hit=null;}
-  if(t.damaging)for(const e of c.sentries){if(e.dead||t.hitIds?.includes(e.id))continue;const f=segmentHit(old,end,{...e,w:1.6,h:1.7,d:1.6});if(f!==null&&f<=fraction){fraction=f;enemy=e;hit=null;}}
+  if(t.damaging&&hit){enemy=c.sentries.find(e=>!e.dead&&e.active!==false&&e.id===hit.id)||null;if(enemy)hit=null;}
+  if(t.damaging)for(const e of c.sentries){if(e.dead||e.active===false||t.hitIds?.includes(e.id))continue;const f=segmentHit(old,end,{...e,w:1.6,h:1.7,d:1.6});if(f!==null&&f<=fraction){fraction=f;enemy=e;hit=null;}}
   if(t.returning&&!enemy){const caught=segmentHit(old,end,{x:p.x,y:p.y+.35,z:p.z,w:1.6,h:1.6,d:1.6});
    if(caught!==null&&caught<=fraction&&p.inventory.length<2){p.inventory.push(t.type);if(!p.equipped){p.equipped=t.type;p.requireRelease=p.useHeld;}p.collectedPickups.push(t.id);p.recoverableItems=p.recoverableItems.filter(id=>id!==t.id);delete p.pickupPositions[t.id];c.events.push({type:'recall',x:p.x,y:p.y,z:p.z});return false;}
   }
@@ -53,16 +53,16 @@ function tickThrown(c,p,dt){
  });
 }
 export function tickCombat(c,p,before,dt){
+ const hitBefore=c.hits;
  c.events=[];c.hitMarker=Math.max(0,c.hitMarker-dt);
- if(p.falls!==c.falls){c.falls=p.falls;c.health=MAX_HEALTH;c.shots=[];c.invulnerable=1;c.quiet=0;}
- c.flash=Math.max(0,c.flash-dt);c.invulnerable=Math.max(0,c.invulnerable-dt);c.quiet+=dt;
- if(c.quiet>6&&c.health<MAX_HEALTH){c.health++;c.quiet=4;}
+ if(p.falls!==c.falls){c.falls=p.falls;c.shots=[];c.invulnerable=1;}
+ c.flash=Math.max(0,c.flash-dt);c.invulnerable=Math.max(0,c.invulnerable-dt);
  c.bursts=c.bursts.filter(b=>(b.life-=dt)>0);
  const pulse=p.shockwaves>c.seenShockwaves;c.seenShockwaves=p.shockwaves||0;
  if(pulse&&p.shockwave)c.bursts.push({...p.shockwave,life:.6,shockwave:true});
- const safe=Math.hypot(p.x-SPAWN.x,p.z-SPAWN.z)<25;
+ const safe=p.campaign?Boolean(p.safeZone):Math.hypot(p.x-SPAWN.x,p.z-SPAWN.z)<25;
  for(const e of c.sentries){
-  if(e.dead)continue;
+  if(e.dead||e.active===false)continue;
   e.hitFlash=Math.max(0,(e.hitFlash||0)-dt);
   const previous={x:e.x,y:e.y,z:e.z};
   if(e.carrierId){const platform=cargoAt(e.carrierId,p.time);e.x=platform.x+2;e.y=platform.y+1.5;e.z=platform.z;}
@@ -71,7 +71,8 @@ export function tickCombat(c,p,before,dt){
    const chase=!safe&&Math.hypot(p.x-e.x,p.z-e.z)<24;
    const tx=chase?p.x:e.homeX+Math.sin(p.time*.5)*8,tz=chase?p.z:e.homeZ+Math.cos(p.time*.5)*8;
    const hooked=p.grapple?.enemyId===e.id&&!e.armored,px=hooked?p.x:tx,pz=hooked?p.z:tz,angle=Math.atan2(px-e.x,pz-e.z),rate=hooked?(Math.hypot(p.x-e.x,p.z-e.z)>2?12:0):3,vx=Math.sin(angle)*rate*dt,vz=Math.cos(angle)*rate*dt;
-   const free=(x,z)=>!world.some(w=>w.id!=='ground'&&Math.abs(x-w.x)<w.w/2+.55&&Math.abs(z-w.z)<w.d/2+.55&&w.y+w.h/2>.1&&w.y-w.h/2<1.5);
+   const floor=(e.homeY??.75)-.75;
+   const free=(x,z)=>!world.some(w=>w.id!=='ground'&&Math.abs(x-w.x)<w.w/2+.55&&Math.abs(z-w.z)<w.d/2+.55&&w.y+w.h/2>floor+.1&&w.y-w.h/2<floor+1.5)&&(!e.requireFloor||world.some(w=>Math.abs(x-w.x)<w.w/2-.5&&Math.abs(z-w.z)<w.d/2-.5&&Math.abs(w.y+w.h/2-floor)<.15));
    if(free(e.x+vx,e.z))e.x+=vx;if(free(e.x,e.z+vz))e.z+=vz;e.heading=angle;
   }
   const direction=p.spearDirection||{x:0,y:0,z:-1};
@@ -80,9 +81,9 @@ export function tickCombat(c,p,before,dt){
   const hammer=pulse&&p.shockwave&&Math.hypot(e.x-p.shockwave.x,e.y-p.shockwave.y,e.z-p.shockwave.z)<=(p.shockwave.radius||7)&&!blocked({...p.shockwave,y:p.shockwave.y+.4},e,e.id);
   if((spear&&e.lastLunge!==p.lunges)||hammer){
    if(spear)e.lastLunge=p.lunges;
-   damage(c,e,p,Boolean(spear&&e.armored&&weakHit(before,end,e)),hammer?(p.shockwave.power||1):(p.spearPower||1));if(e.dead)continue;
+   damage(c,e,p,Boolean(spear&&e.armored&&weakHit(before,end,e)),hammer?(p.shockwave.power||1):(p.spearPower||1));if(e.dead||e.active===false)continue;
   }
-  if(e.kind==='walker'&&!safe&&Math.hypot(e.x-p.x,e.z-p.z)<.9&&Math.abs(e.y-p.y)<1.3&&c.invulnerable===0){c.health--;c.hits++;c.events.push({type:'hurt',x:p.x,y:p.y,z:p.z});c.flash=.28;c.invulnerable=1;c.quiet=0;}
+  if(e.kind==='walker'&&!safe&&Math.hypot(e.x-p.x,e.z-p.z)<.9&&Math.abs(e.y-p.y)<1.3&&c.invulnerable===0){c.hits++;c.events.push({type:'hurt',x:p.x,y:p.y,z:p.z});c.flash=.28;c.invulnerable=1;}
   e.cooldown=Math.max(0,e.cooldown-dt);
   const distance=Math.hypot(p.x-e.x,p.y-e.y,p.z-e.z),clear=!safe&&distance<38&&!blocked(e,p,e.id);
   if(!clear){e.charge=0;continue;}
@@ -99,17 +100,16 @@ export function tickCombat(c,p,before,dt){
  if(pulse&&p.shockwave)for(const w of [...world])if(w.breakable&&Math.hypot(w.x-p.shockwave.x,w.y-p.shockwave.y,w.z-p.shockwave.z)<=(p.shockwave.radius||7)&&!blocked({...p.shockwave,y:p.shockwave.y+.4},w,w.id))shatter(w,p);
  tickThrown(c,p,dt);
  for(const event of p.breakEvents||[]){c.bursts.push({...event,life:.6});c.events.push({...event,type:'destroy'});}p.breakEvents=[];
- let defeated=c.health<=0;
  c.shots=c.shots.filter(s=>{
   const old={x:s.x,y:s.y,z:s.z};s.x+=s.vx*dt;s.y+=s.vy*dt;s.z+=s.vz*dt;s.life-=dt;
   if(s.life<=0||blocked(old,s,s.owner))return false;
   // Relative swept collision catches both fast players and fast projectiles.
   const a={x:old.x-before.x,y:old.y-before.y,z:old.z-before.z},b={x:s.x-p.x,y:s.y-p.y,z:s.z-p.z};
   if(segmentHit(a,b,{x:0,y:0,z:0,w:.9,h:halfHeight(p)*2+.26,d:.9})!==null){
-   if(!safe&&c.invulnerable===0){c.health--;c.hits++;c.events.push({type:'hurt',x:p.x,y:p.y,z:p.z});c.flash=.28;c.invulnerable=1;c.quiet=0;if(c.health<=0)defeated=true;}
+   if(!safe&&c.invulnerable===0){c.hits++;c.events.push({type:'hurt',x:p.x,y:p.y,z:p.z});c.flash=.28;c.invulnerable=1;}
    return false;
   }
   return true;
  });
- return defeated;
+ return c.hits>hitBefore;
 }

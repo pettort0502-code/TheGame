@@ -37,7 +37,7 @@ export const REEL_SPEED=7, MIN_ROPE_LENGTH=1.5;
 export function segmentHit(a,b,w){let lo=0,hi=1;for(const [axis,size] of [['x','w'],['y','h'],['z','d']]){const d=b[axis]-a[axis],min=w[axis]-w[size]/2,max=w[axis]+w[size]/2;if(Math.abs(d)<1e-8){if(a[axis]<min||a[axis]>max)return null;}else{let t1=(min-a[axis])/d,t2=(max-a[axis])/d;if(t1>t2)[t1,t2]=[t2,t1];lo=Math.max(lo,t1);hi=Math.min(hi,t2);if(lo>hi)return null;}}return lo;}
 export function canGrapple(p,a,checkRange=true){
  a=resolveAnchor(a,p.time||0,p.enemyTargets||[]);
- if(a?.droneId&&p.deadDrones?.includes(a.droneId))return false;
+ if(a?.droneId&&(p.deadDrones?.includes(a.droneId)||p.campaign&&a.levelStage!==p.levelStage))return false;
  if(!a||![a.x,a.y,a.z].every(Number.isFinite))return false;
  const d=Math.hypot(a.x-p.x,a.y-p.y,a.z-p.z);if(d<.1||(checkRange&&d>GRAPPLE_RANGE))return false;
  const w=world.find(w=>w.id===a.surfaceId);if(!w&&!a.droneId&&!a.enemyId)return false;
@@ -262,7 +262,7 @@ export function step(player,input,dt) {
     player.vx=pad.dx/d*speed;player.vz=pad.dz/d*speed;player.boostTime=1.3;player.boosts++;
   }
   player.padId=pad?.id||null;
-  if(player.y< -16){Object.assign(player,SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.slamming=false;player.falls++;}
+  if(player.y<(player.killHeight??-16)){Object.assign(player,player.respawnPoint||SPAWN,{vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,controlLock:0,wallNormal:null,grapple:null,grappleHeld:false,ropeLength:0,airJump:true});resetMovement(player);player.lungeTime=0;player.spearBuffer=0;player.slamming=false;player.falls++;}
   return player;
 }
 export function newPlayer(){return {...SPAWN,time:0,landings:0,landingImpact:0,landingX:0,landingY:0,landingZ:0,vx:0,vy:0,vz:0,grounded:false,jumpBuffer:0,coyoteTime:0,falls:0,controlLock:0,wallCooldown:0,wallNormal:null,wallJumps:0,doubleJumps:0,airJump:true,grapple:null,grappleHeld:false,ropeLength:0,hooks:0,crouched:false,slideTime:0,slideCooldown:0,slideHeld:false,slideBuffer:0,slides:0,boostTime:0,boosts:0,padId:null,riding:null,enemyTargets:[],recoverableItems:[],breakEvents:[],grinding:false,grindTime:0,grappleCharge:0,spearPower:1,slingshots:0,thrownItems:[],pickupPositions:{},pickupDelay:{},deadDrones:[],hammerCooldown:0,hammerBuffer:0,slamming:false,shockwaves:0,shockwave:null,inventory:[],equipped:null,collectedPickups:[],useHeld:false,requireRelease:false,spearCooldown:0,spearBuffer:0,lungeTime:0,lunges:0};}

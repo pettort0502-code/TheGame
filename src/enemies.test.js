@@ -12,12 +12,12 @@ test('sentries telegraph, fire toward visible players, and respect safe plaza an
  const cover={id:'test-cover',x:e.x+5,y:2,z:e.z,w:1,h:4,d:8};world.push(cover);
  try{const blocked=newCombat();blocked.sentries=[{...e,cooldown:0,charge:0}];for(let i=0;i<120;i++)tickCombat(blocked,p,p,dt);assert.equal(blocked.shots.length,0);}finally{world.pop();}
 });
-test('swept projectiles hit fast moving players, grant immunity, regenerate and signal defeat',()=>{
+test('one projectile hit signals a retry, with no shield pool and immunity preventing repeats',()=>{
  const c=newCombat();c.sentries=[];const p={...newPlayer(),x:100,y:2,z:60},before={...p,x:98};
  const shot=()=>({x:99,y:2,z:60,vx:0,vy:0,vz:0,life:2,owner:'test'});
- c.shots=[shot(),shot()];assert.equal(tickCombat(c,p,before,dt),false);assert.equal(c.health,2);assert.equal(c.hits,1);
- for(let i=0;i<750;i++)tickCombat(c,p,p,dt);assert.equal(c.health,3);
- c.health=1;c.invulnerable=0;c.shots=[shot()];assert.equal(tickCombat(c,p,before,dt),true);assert.equal(c.health,0);
+ c.shots=[shot(),shot()];assert.equal(tickCombat(c,p,before,dt),true);assert.equal(c.hits,1);assert.equal('health' in c,false);
+ c.shots=[shot()];assert.equal(tickCombat(c,p,before,dt),false);assert.equal(c.hits,1);
+ c.invulnerable=0;c.shots=[shot()];assert.equal(tickCombat(c,p,before,dt),true);assert.equal(c.hits,2);
 });
 test('shots stop on walls, expire, and enemy bases are solid outside the plaza',()=>{
  const c=newCombat();c.sentries=[];const p={...newPlayer(),x:100,y:3,z:60};
